@@ -321,7 +321,7 @@
       <div class="lb-k">Ministerio de Visitación</div>
       <div class="lb-s">Acceso al sistema</div>
     </div>
-    <div class="fld"><label>Correo</label><input id="lg_email" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="username"></div>
+    <div class="fld"><label>Cédula</label><input id="lg_email" type="text" inputmode="numeric" placeholder="Tu número de cédula" autocomplete="username"></div>
     <div class="fld"><label>Contraseña</label><input id="lg_pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
     <div class="lg-error" id="lg_error"></div>
     <button class="btn btn-primary" id="lg_btn" style="justify-content:center;width:100%;padding:12px">Entrar</button>
@@ -904,18 +904,19 @@ function mostrarLogin(){document.getElementById('loginOv').classList.add('show')
 function ocultarLogin(){document.getElementById('loginOv').classList.remove('show')}
 async function entrarApp(){ocultarLogin();await cargarRemoto();render();setNube(true)}
 async function hacerLogin(){
-  const email=document.getElementById('lg_email').value.trim();
+  let email=document.getElementById('lg_email').value.trim();
   const pass=document.getElementById('lg_pass').value;
   const err=document.getElementById('lg_error');const btn=document.getElementById('lg_btn');
   err.classList.remove('show');
-  if(!email||!pass){err.textContent='Escribe tu correo y contraseña.';err.classList.add('show');return}
+  if(!email||!pass){err.textContent='Escribe tu cédula y contraseña.';err.classList.add('show');return}
+  if(!email.includes('@'))email=email+'@visitacion.com';
   btn.disabled=true;btn.textContent='Entrando…';
   try{
     const{error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error)throw error;
     await entrarApp();
   }catch(e){
-    err.textContent='Correo o contraseña incorrectos.';err.classList.add('show');
+    err.textContent='Cédula o contraseña incorrectas.';err.classList.add('show');
   }
   btn.disabled=false;btn.textContent='Entrar';
 }
@@ -926,7 +927,7 @@ async function initApp(){
     try{
       const{data:{session}}=await sb.auth.getSession();
       if(session){await entrarApp();}
-      else{mostrarLogin();if(hint)hint.textContent='Ingresa con el correo y la contraseña que te asignaron.';}
+      else{mostrarLogin();if(hint)hint.textContent='Ingresa con tu cédula en ambos campos.';}
     }catch(e){
       mostrarLogin();if(hint)hint.textContent='No se pudo conectar con el servidor. Revisa tu internet.';
     }
