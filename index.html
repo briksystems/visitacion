@@ -585,9 +585,11 @@ function abrirVisita(id){
       </div>
       <div class="grid2">
         <div class="fld"><label>Fecha de solicitud</label><input type="date" id="f_fechaSolicitud" value="${v.fechaSolicitud||''}"></div>
-        <div class="fld"><label>Fecha programada</label><input type="date" id="f_fechaProgramada" value="${v.fechaProgramada||''}"></div>
+        <div class="fld"><label>Fecha de asignación</label><input type="date" id="f_fechaAsignacion" value="${v.fechaAsignacion||''}"></div>
       </div>
-      <div class="fld"><label>Fecha en que se realizó</label><input type="date" id="f_fechaRealizacion" value="${v.fechaRealizacion||''}"></div>
+      <div class="grid2">
+        <div class="fld"><label>Fecha programada</label><input type="date" id="f_fechaProgramada" value="${v.fechaProgramada||''}"></div>
+        <div class="fld"><label>Fecha en que se realizó</label><input type="date" id="f_fechaRealizacion" value="${v.fechaRealizacion||''}"></div>
       ${esNueva?'':`<div class="tiempos" id="tiempos"></div>`}
       <div class="fld"><label>Observaciones / novedades</label>
         <textarea id="f_observaciones" placeholder="Cualquier novedad que se salga de lo normal">${escapeHtml(v.observaciones)}</textarea></div>
@@ -623,7 +625,7 @@ function abrirVisita(id){
     const sol=get('f_solicitante');
     if(!sol){toast('Escribe el nombre del solicitante');return}
     const datos={solicitante:sol,cedula:get('f_cedula'),tipo:get('f_tipo'),visitador:get('f_visitador'),observaciones:get('f_observaciones'),
-      fechaSolicitud:get('f_fechaSolicitud'),fechaProgramada:get('f_fechaProgramada'),fechaRealizacion:get('f_fechaRealizacion'),
+      fechaSolicitud:get('f_fechaSolicitud'),fechaAsignacion:get('f_fechaAsignacion'),fechaProgramada:get('f_fechaProgramada'),fechaRealizacion:get('f_fechaRealizacion'),
       fechaSeguimiento:get('f_fechaSeguimiento'),seguimientoNota:get('f_seguimientoNota'),seguimientoTipo:segSel};
     const cambioEstado=estadoSel!==v.estado;
     datos.estado=estadoSel;
@@ -639,7 +641,7 @@ function abrirVisita(id){
   document.getElementById('ovVisita').classList.add('open');
 }
 function nuevaVisita(){return{id:uid('v'),solicitante:'',cedula:'',tipo:'domiciliaria',visitador:'',observaciones:'',
-  estado:'Solicitada',fechaSolicitud:hoy(),fechaProgramada:'',fechaRealizacion:'',
+  estado:'Solicitada',fechaSolicitud:hoy(),fechaAsignacion:'',fechaProgramada:'',fechaRealizacion:'',
   seguimientoTipo:'Ninguno',fechaSeguimiento:'',seguimientoNota:'',historial:[],
   creado:new Date().toISOString(),actualizado:new Date().toISOString()}}
 
@@ -761,7 +763,7 @@ function exportarExcel(){
   if(!state.visitas.length){toast('No hay visitas para exportar');return}
   const filas=state.visitas.map(v=>({
     'Solicitante':v.solicitante,'Cédula':v.cedula,'Tipo':TIPOS[v.tipo],'Estado':v.estado,'Visitador':v.visitador,
-    'F. solicitud':v.fechaSolicitud,'F. programada':v.fechaProgramada,'F. realizada':v.fechaRealizacion,
+    'F. solicitud':v.fechaSolicitud,'F. asignación':v.fechaAsignacion,'F. programada':v.fechaProgramada,'F. realizada':v.fechaRealizacion,
     'Días de atención':tiempoCiclo(v)??'',
     'Seguimiento':v.seguimientoTipo,'F. seguimiento':v.fechaSeguimiento,'Nota seguimiento':v.seguimientoNota,
     'Observaciones':v.observaciones
@@ -852,7 +854,7 @@ function aplicarAcciones(acciones){
   });
   if(cambios){guardar();render()}
 }
-const CAMPOS_OK=['solicitante','cedula','tipo','visitador','observaciones','estado','fechaSolicitud','fechaProgramada','fechaRealizacion','seguimientoTipo','fechaSeguimiento','seguimientoNota'];
+const CAMPOS_OK=['solicitante','cedula','tipo','visitador','observaciones','estado','fechaSolicitud','fechaAsignacion','fechaProgramada','fechaRealizacion','seguimientoTipo','fechaSeguimiento','seguimientoNota'];
 function limpiar(o){const r={};for(const k in o)if(CAMPOS_OK.includes(k)&&o[k]!=null&&o[k]!=='')r[k]=o[k];return r}
 
 async function llamarAsistente(userText){
