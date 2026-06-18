@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#EAEFEC; --surface:#FFFFFF; --surface-2:#F4F7F5;
@@ -42,6 +43,9 @@
   .brand .k{font-family:"Spectral",serif;font-size:20px;font-weight:600;letter-spacing:.2px;color:#fff}
   .brand .s{font-size:11.5px;color:#A9C6BE;letter-spacing:.4px;text-transform:uppercase;margin-top:2px}
   .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .nube{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;white-space:nowrap}
+  .nube.on{background:rgba(255,255,255,.15);color:#bfe0d6}
+  .nube.off{background:var(--alert-soft);color:var(--alert)}
   .btn{
     border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:600;
     display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap;
@@ -217,6 +221,20 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:500;z-index:80;opacity:0;transition:.25s;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* LOGIN */
+  .login-ov{position:fixed;inset:0;z-index:100;background:linear-gradient(160deg,#14564E,#0E3F39);display:none;align-items:center;justify-content:center;padding:20px}
+  .login-ov.show{display:flex}
+  .login-card{background:var(--surface);border-radius:18px;padding:30px 26px;width:100%;max-width:380px;box-shadow:0 30px 70px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:14px}
+  .login-brand{text-align:center;margin-bottom:6px}
+  .login-brand .lb-k{font-family:"Spectral",serif;font-size:22px;font-weight:600;color:var(--primary)}
+  .login-brand .lb-s{font-size:12.5px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin-top:4px}
+  .login-card .fld label{font-size:12px;font-weight:600;color:var(--muted)}
+  .login-card .fld input{border:1px solid var(--line);border-radius:9px;padding:11px 13px;width:100%;font-size:15px}
+  .login-card .fld input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+  .lg-error{color:var(--alert);font-size:13px;font-weight:500;min-height:0;display:none}
+  .lg-error.show{display:block}
+  .lg-hint{font-size:12px;color:var(--muted);text-align:center}
+
   @media(max-width:600px){
     .brand .s{display:none}
     .top-actions .btn span.lbl{display:none}
@@ -234,6 +252,7 @@
     <span class="s">Gestión y seguimiento pastoral</span>
   </div>
   <div class="top-actions">
+    <span class="nube" id="nubeStatus"></span>
     <button class="btn btn-ghost" id="btnExport" title="Exportar a Excel">
       <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
       <span class="lbl">Exportar</span>
@@ -295,8 +314,29 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- LOGIN -->
+<div class="login-ov" id="loginOv">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="lb-k">Ministerio de Visitación</div>
+      <div class="lb-s">Acceso al sistema</div>
+    </div>
+    <div class="fld"><label>Correo</label><input id="lg_email" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="username"></div>
+    <div class="fld"><label>Contraseña</label><input id="lg_pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="lg-error" id="lg_error"></div>
+    <button class="btn btn-primary" id="lg_btn" style="justify-content:center;width:100%;padding:12px">Entrar</button>
+    <div class="lg-hint" id="lg_hint">Conectando con el servidor…</div>
+  </div>
+</div>
+
 <script>
-/* ---------- Almacenamiento resistente (localStorage con respaldo en memoria) ---------- */
+/* ---------- Conexión con Supabase ---------- */
+const SUPABASE_URL='https://gwhynitzqiejrxxptvcs.supabase.co';
+const SUPABASE_KEY='sb_publishable_pEj6klYB8RetaU-ICJpm9g_piYq03qI';
+let sb=null;
+try{ if(window.supabase&&SUPABASE_URL.startsWith('http')) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){}
+
+/* Caché local (respaldo offline / vista previa) */
 const Store=(()=>{let mem={},backend='memoria';try{localStorage.setItem('__t','1');localStorage.removeItem('__t');backend='local'}catch(e){}
  return{backend,get(k){if(backend==='local'){try{return localStorage.getItem(k)}catch(e){}}return mem[k]??null},
  set(k,v){if(backend==='local'){try{localStorage.setItem(k,v);return}catch(e){}}mem[k]=v}}})();
@@ -309,8 +349,30 @@ const ORIGENES=['Iglesia','Puesto de visitación','Call center','Consejería','P
 const SEG_TIPOS=['Ninguno','Nueva visita','Llamada de seguimiento','Consejería','Atención a otra persona'];
 
 let state={visitas:[],visitadores:[],apiKey:'',model:''};
-function cargar(){try{const d=Store.get('mv_data');if(d)state=Object.assign(state,JSON.parse(d))}catch(e){}}
-function guardar(){Store.set('mv_data',JSON.stringify(state))}
+function cargarLocal(){try{const d=Store.get('mv_data');if(d)state=Object.assign(state,JSON.parse(d))}catch(e){}}
+async function cargarRemoto(){
+  if(!sb)return cargarLocal();
+  try{
+    const{data,error}=await sb.from('app_data').select('data').eq('id','main').maybeSingle();
+    if(error)throw error;
+    if(data&&data.data)state=Object.assign({visitas:[],visitadores:[],apiKey:'',model:''},data.data);
+    Store.set('mv_data',JSON.stringify(state));
+  }catch(e){cargarLocal()}
+}
+let saveT;
+function guardar(){
+  Store.set('mv_data',JSON.stringify(state));
+  if(sb){clearTimeout(saveT);saveT=setTimeout(guardarRemoto,600)}
+}
+async function guardarRemoto(){
+  if(!sb)return;
+  try{
+    const{error}=await sb.from('app_data').upsert({id:'main',data:state,updated_at:new Date().toISOString()});
+    if(error)throw error;
+    setNube(true);
+  }catch(e){setNube(false);toast('Sin conexión: se guardó solo en este equipo')}
+}
+function setNube(ok){const el=document.getElementById('nubeStatus');if(el){el.textContent=ok?'Sincronizado':'Sin conexión';el.className='nube '+(ok?'on':'off')}}
 const hoy=()=>new Date().toISOString().slice(0,10);
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
 
@@ -658,8 +720,8 @@ function abrirSettings(){
         <div class="hint">Haiku es el más económico. Si lo dejas vacío se usa una opción por defecto.</div></div>
       <div class="fld" style="border-top:1px solid var(--line);padding-top:14px">
         <label>Almacenamiento</label>
-        <div class="hint">Modo actual: <b>${Store.backend==='local'?'permanente en este dispositivo':'temporal (vista previa)'}</b>.
-        ${Store.backend==='local'?'Tus datos quedan guardados aunque cierres la página.':'En la vista previa los datos no se conservan al recargar; al publicar la página sí se guardan.'}</div></div>
+        <div class="hint">${sb?'Los datos se sincronizan en el servidor (Supabase) y se comparten entre todos los dispositivos. Se guarda también una copia local por si te quedas sin internet.':'Modo local: los datos se guardan solo en este dispositivo.'}</div></div>
+      ${sb?'<div class="fld"><button class="btn btn-quiet" id="s_logout" style="justify-content:center">Cerrar sesión</button></div>':''}
       <div class="fld"><button class="btn btn-quiet" id="s_import" style="justify-content:center">Importar datos desde un archivo</button>
         <input type="file" id="s_file" accept="application/json" style="display:none"></div>
     </div>
@@ -686,6 +748,8 @@ function abrirSettings(){
   };
   document.getElementById('s_reset').onclick=()=>{if(confirm('Esto borrará todas las visitas y visitadores. ¿Continuar?')){
     state={visitas:[],visitadores:[],apiKey:'',model:''};guardar();cerrarModales();render();toast('Datos borrados')}};
+  const lo=document.getElementById('s_logout');
+  if(lo)lo.onclick=()=>{if(confirm('¿Cerrar sesión en este dispositivo?'))cerrarSesion()};
   m.querySelectorAll('[data-close]').forEach(b=>b.onclick=cerrarModales);
   document.getElementById('ovSettings').classList.add('open');
 }
@@ -835,8 +899,45 @@ document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('mousedown',e=>{if(e.target===o)cerrarModales()}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){cerrarModales();document.getElementById('chatOv').classList.remove('open')}});
 
-/* ---------- Inicio ---------- */
-cargar();render();
+/* ---------- Login e inicio ---------- */
+function mostrarLogin(){document.getElementById('loginOv').classList.add('show')}
+function ocultarLogin(){document.getElementById('loginOv').classList.remove('show')}
+async function entrarApp(){ocultarLogin();await cargarRemoto();render();setNube(true)}
+async function hacerLogin(){
+  const email=document.getElementById('lg_email').value.trim();
+  const pass=document.getElementById('lg_pass').value;
+  const err=document.getElementById('lg_error');const btn=document.getElementById('lg_btn');
+  err.classList.remove('show');
+  if(!email||!pass){err.textContent='Escribe tu correo y contraseña.';err.classList.add('show');return}
+  btn.disabled=true;btn.textContent='Entrando…';
+  try{
+    const{error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error)throw error;
+    await entrarApp();
+  }catch(e){
+    err.textContent='Correo o contraseña incorrectos.';err.classList.add('show');
+  }
+  btn.disabled=false;btn.textContent='Entrar';
+}
+async function cerrarSesion(){if(sb){await sb.auth.signOut();}location.reload();}
+async function initApp(){
+  if(sb){
+    const hint=document.getElementById('lg_hint');
+    try{
+      const{data:{session}}=await sb.auth.getSession();
+      if(session){await entrarApp();}
+      else{mostrarLogin();if(hint)hint.textContent='Ingresa con el correo y la contraseña que te asignaron.';}
+    }catch(e){
+      mostrarLogin();if(hint)hint.textContent='No se pudo conectar con el servidor. Revisa tu internet.';
+    }
+    document.getElementById('lg_btn').onclick=hacerLogin;
+    document.getElementById('lg_pass').addEventListener('keydown',e=>{if(e.key==='Enter')hacerLogin()});
+  }else{
+    // Modo local (sin servidor): vista previa u offline
+    cargarLocal();render();
+  }
+}
+initApp();
 </script>
 </body>
 </html>
