@@ -1,1006 +1,830 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ministerio de Visitación · Gestión</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root{
-    --bg:#EAEFEC; --surface:#FFFFFF; --surface-2:#F4F7F5;
-    --primary:#14564E; --primary-d:#0E3F39; --primary-soft:#E2ECE9;
-    --accent:#C9872F; --accent-soft:#F6ECDD;
-    --alert:#BC4A33; --alert-soft:#F7E5E0;
-    --ok:#4E8068; --ok-soft:#E4EFE8;
-    --ink:#19211E; --muted:#65726C; --line:#D6DED9;
-    --dom:#14564E; --hos:#2C6E8F; --fun:#6E5A86;
-    --shadow:0 1px 2px rgba(20,40,35,.06),0 6px 20px rgba(20,40,35,.06);
-    --radius:14px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    background:var(--bg);color:var(--ink);
-    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;
-  }
-  h1,h2,h3,.serif{font-family:"Spectral",Georgia,"Times New Roman",serif}
-  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-  input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink)}
-  ::-webkit-scrollbar{height:10px;width:10px}
-  ::-webkit-scrollbar-thumb{background:#c3cec8;border-radius:20px;border:3px solid var(--bg)}
-
-  /* HEADER */
-  header.top{
-    background:var(--primary);color:#EAF1EE;padding:14px 18px;
-    display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:30;
-  }
-  .brand{display:flex;flex-direction:column;line-height:1.1}
-  .brand .k{font-family:"Spectral",serif;font-size:20px;font-weight:600;letter-spacing:.2px;color:#fff}
-  .brand .s{font-size:11.5px;color:#A9C6BE;letter-spacing:.4px;text-transform:uppercase;margin-top:2px}
-  .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .nube{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;white-space:nowrap}
-  .nube.on{background:rgba(255,255,255,.15);color:#bfe0d6}
-  .nube.off{background:var(--alert-soft);color:var(--alert)}
-  .btn{
-    border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:600;
-    display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap;
-  }
-  .btn-primary{background:var(--accent);color:#fff}
-  .btn-primary:hover{background:#b3781f}
-  .btn-ghost{background:rgba(255,255,255,.12);color:#EAF1EE}
-  .btn-ghost:hover{background:rgba(255,255,255,.2)}
-  .btn-quiet{background:var(--surface-2);color:var(--primary);border:1px solid var(--line)}
-  .btn-quiet:hover{background:#e9efec}
-  .icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-
-  /* STATS */
-  .stats{display:flex;gap:12px;padding:16px 18px 4px;overflow-x:auto}
-  .stat{
-    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    padding:13px 16px;min-width:140px;flex:1;box-shadow:var(--shadow)
-  }
-  .stat .n{font-family:"Spectral",serif;font-size:26px;font-weight:600;line-height:1}
-  .stat .l{font-size:12px;color:var(--muted);margin-top:5px}
-  .stat.alert .n{color:var(--alert)} .stat.accent .n{color:var(--accent)} .stat.ok .n{color:var(--ok)}
-
-  /* NAV */
-  nav.tabs{display:flex;gap:4px;padding:14px 18px 0;align-items:center;flex-wrap:wrap}
-  .tab{
-    padding:9px 16px;border-radius:10px 10px 0 0;font-size:14px;font-weight:600;color:var(--muted);
-    border:1px solid transparent;border-bottom:none;position:relative;top:1px
-  }
-  .tab.active{background:var(--surface);color:var(--primary);border-color:var(--line)}
-  .tab .b{display:inline-block;background:var(--primary-soft);color:var(--primary);font-size:11px;
-    border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700}
-  .tab.active .b{background:var(--accent-soft);color:var(--accent)}
-
-  main{padding:0 18px 40px}
-  .panel{background:var(--surface);border:1px solid var(--line);border-radius:0 var(--radius) var(--radius) var(--radius);box-shadow:var(--shadow)}
-
-  /* BOARD */
-  .acc{padding:12px}
-  .acc-sec{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;background:var(--surface)}
-  .acc-head{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;user-select:none}
-  .acc-head:hover{background:var(--surface-2)}
-  .acc-head .dot{width:10px;height:10px;border-radius:50%;flex:none}
-  .acc-head .t{font-weight:700;font-size:14.5px}
-  .acc-head .c{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:20px;padding:1px 9px}
-  .acc-head .chev{margin-left:auto;width:18px;height:18px;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;flex:none}
-  .acc-sec.open .acc-head{background:var(--surface-2);border-bottom:1px solid var(--line)}
-  .acc-sec.open .acc-head .chev{transform:rotate(180deg)}
-  .acc-body{display:none;padding:12px;gap:10px;flex-wrap:wrap}
-  .acc-sec.open .acc-body{display:flex}
-  .acc-body .card{flex:1 1 240px;min-width:0;max-width:340px}
-  .acc-body .col-empty{flex:1 1 100%}
-  .card{
-    background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:11px 12px;
-    cursor:pointer;transition:.12s;border-left:3px solid var(--primary)
-  }
-  .card:hover{transform:translateY(-1px);box-shadow:var(--shadow);background:#fff}
-  .card.t-dom{border-left-color:var(--dom)} .card.t-hos{border-left-color:var(--hos)} .card.t-fun{border-left-color:var(--fun)}
-  .card.late{box-shadow:0 0 0 1.5px var(--alert) inset}
-  .card .ct{font-weight:600;font-size:14px;line-height:1.25;margin-bottom:6px}
-  .card .ct .cc{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:2px}
-  .card .meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-  .pill{font-size:10.5px;font-weight:600;border-radius:6px;padding:2px 7px;letter-spacing:.2px}
-  .pill.dom{background:var(--primary-soft);color:var(--dom)}
-  .pill.hos{background:#E1EDF2;color:var(--hos)}
-  .pill.fun{background:#ECE6F2;color:var(--fun)}
-  .pill.warn{background:var(--alert-soft);color:var(--alert)}
-  .pill.due{background:var(--accent-soft);color:var(--accent)}
-  .card .vis{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
-  .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:7px;gap:8px}
-  .card-foot .dias{font-size:11px;font-weight:600;color:var(--muted);background:#e3eae6;border-radius:6px;padding:1px 7px}
-  .tiempos{display:flex;gap:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
-  .tiempos .ti{flex:1;display:flex;flex-direction:column;gap:2px}
-  .tiempos .ti-n{font-family:"Spectral",serif;font-size:22px;font-weight:600;color:var(--primary);line-height:1}
-  .tiempos .ti-l{font-size:11.5px;color:var(--muted)}
-  .rec-btns{display:flex;gap:8px;margin-top:8px}
-  .col-empty{font-size:12px;color:#9aa7a1;text-align:center;padding:14px 6px;border:1px dashed var(--line);border-radius:10px}
-
-  /* LISTS (seguimiento / visitadores) */
-  .list-wrap{padding:18px}
-  .list-row{
-    display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px solid var(--line);
-    border-radius:11px;margin-bottom:9px;background:var(--surface-2)
-  }
-  .list-row:hover{background:#fff;box-shadow:var(--shadow)}
-  .lr-main{flex:1;min-width:0}
-  .lr-title{font-weight:600;font-size:14.5px}
-  .lr-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
-  .lr-side{text-align:right;font-size:12.5px;color:var(--muted);white-space:nowrap}
-  .lr-side .due-d{font-weight:700}
-  .empty-state{text-align:center;padding:46px 20px;color:var(--muted)}
-  .empty-state .e-ic{width:38px;height:38px;stroke:var(--line);stroke-width:1.5;margin:0 auto 12px;display:block}
-  .empty-state .e-t{font-family:"Spectral",serif;font-size:18px;color:var(--ink);margin-bottom:4px}
-
-  /* WORKLOAD */
-  .vis-summary{padding:10px 18px 0;font-size:13px;color:var(--muted)}
-  .vis-summary b{color:var(--ink)}
-  .vis-card{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px;background:var(--surface-2);cursor:pointer;transition:.12s}
-  .vis-card:hover{background:#fff;box-shadow:var(--shadow)}
-  .vc-top{display:flex;align-items:flex-start;gap:14px}
-  .vc-id{flex:1;min-width:0}
-  .vc-name{font-weight:600;font-size:15px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .vc-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
-  .vc-nums{display:flex;gap:20px;flex:none}
-  .vc-num{display:flex;flex-direction:column;align-items:center;min-width:50px}
-  .vc-num .vn{font-family:"Spectral",serif;font-size:24px;font-weight:600;line-height:1}
-  .vc-num .vl{font-size:10.5px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
-  .vn-act.carga-baja{color:var(--ok)} .vn-act.carga-media{color:var(--accent)} .vn-act.carga-alta{color:var(--alert)}
-  .vc-bar{margin-top:11px;height:7px;background:#e3eae6;border-radius:20px;overflow:hidden}
-  .vc-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),#2f7d6e);border-radius:20px;transition:width .4s}
-
-  .sec-bar{display:flex;align-items:center;gap:12px;padding:16px 18px 2px}
-  .sec-bar h2{font-size:18px;font-weight:600}
-  .sec-bar .sb-act{margin-left:auto;display:flex;gap:8px}
-  .filters{display:flex;gap:8px;padding:12px 18px 2px;flex-wrap:wrap}
-  .filters select,.filters input{
-    border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--surface);min-width:120px
-  }
-
-  /* MODAL */
-  .ov{position:fixed;inset:0;background:rgba(15,30,26,.5);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow-y:auto;padding:30px 14px}
-  .ov.open{display:flex}
-  .modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.3);margin:auto}
-  .modal-h{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line)}
-  .modal-h h3{font-size:18px;font-weight:600;flex:1}
-  .x{width:32px;height:32px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;color:var(--muted)}
-  .x:hover{background:var(--alert-soft);color:var(--alert)}
-  .modal-b{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
-  .fld{display:flex;flex-direction:column;gap:5px}
-  .fld label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.2px}
-  .fld input,.fld select,.fld textarea{
-    border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--surface);width:100%
-  }
-  .fld textarea{resize:vertical;min-height:60px}
-  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .modal-f{padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-  .seg-types{display:flex;flex-wrap:wrap;gap:6px}
-  .chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface)}
-  .chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
-  .stepper{display:flex;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-wrap:wrap}
-  .step{flex:1;min-width:74px;text-align:center;padding:9px 4px;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface);border-right:1px solid var(--line)}
-  .step:last-child{border-right:none}
-  .step.done{background:var(--primary-soft);color:var(--primary)}
-  .step.cur{background:var(--primary);color:#fff}
-  .hint{font-size:12px;color:var(--muted)}
-  .danger-link{color:var(--alert);font-size:13px;font-weight:600;margin-right:auto;align-self:center}
-
-  /* ASSISTANT */
-  .fab{
-    position:fixed;right:20px;bottom:20px;z-index:40;background:var(--primary);color:#fff;
-    border-radius:50px;padding:14px 18px;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(20,40,35,.28);
-    display:flex;align-items:center;gap:9px
-  }
-  .fab:hover{background:var(--primary-d)}
-  .chat-ov{position:fixed;inset:0;z-index:60;display:none}
-  .chat-ov.open{display:block}
-  .chat-bg{position:absolute;inset:0;background:rgba(15,30,26,.4)}
-  .chat{
-    position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:var(--surface);
-    display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,.2)
-  }
-  .chat-h{background:var(--primary);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:10px}
-  .chat-h .ch-t{font-family:"Spectral",serif;font-size:17px;font-weight:600;flex:1}
-  .chat-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:var(--surface-2)}
-  .msg{max-width:85%;padding:11px 14px;border-radius:14px;font-size:14px;line-height:1.4}
-  .msg.u{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px}
-  .msg.a{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
-  .msg.sys{align-self:center;background:var(--accent-soft);color:#8a5e1c;font-size:12.5px;border-radius:10px;text-align:center}
-  .chat-in{padding:14px;border-top:1px solid var(--line);display:flex;gap:9px;background:var(--surface)}
-  .chat-in textarea{flex:1;border:1px solid var(--line);border-radius:12px;padding:11px 13px;resize:none;height:46px;max-height:120px}
-  .chat-send{background:var(--primary);color:#fff;border-radius:12px;width:46px;display:grid;place-items:center;flex:none}
-  .chat-send:disabled{opacity:.5}
-  .typing{display:flex;gap:4px;padding:4px 2px}
-  .typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bl 1.2s infinite}
-  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
-  @keyframes bl{0%,60%,100%{opacity:.25}30%{opacity:1}}
-  .ex-q{font-size:12px;color:var(--primary);background:var(--primary-soft);border-radius:9px;padding:8px 11px;cursor:pointer;border:1px solid transparent}
-  .ex-q:hover{border-color:var(--primary)}
-
-  .badge-store{font-size:11px;color:#A9C6BE}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:500;z-index:80;opacity:0;transition:.25s;pointer-events:none}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-  /* LOGIN */
-  .login-ov{position:fixed;inset:0;z-index:100;background:linear-gradient(160deg,#14564E,#0E3F39);display:none;align-items:center;justify-content:center;padding:20px}
-  .login-ov.show{display:flex}
-  .login-card{background:var(--surface);border-radius:18px;padding:30px 26px;width:100%;max-width:380px;box-shadow:0 30px 70px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:14px}
-  .login-brand{text-align:center;margin-bottom:6px}
-  .login-brand .lb-k{font-family:"Spectral",serif;font-size:22px;font-weight:600;color:var(--primary)}
-  .login-brand .lb-s{font-size:12.5px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin-top:4px}
-  .login-card .fld label{font-size:12px;font-weight:600;color:var(--muted)}
-  .login-card .fld input{border:1px solid var(--line);border-radius:9px;padding:11px 13px;width:100%;font-size:15px}
-  .login-card .fld input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
-  .lg-error{color:var(--alert);font-size:13px;font-weight:500;min-height:0;display:none}
-  .lg-error.show{display:block}
-  .lg-hint{font-size:12px;color:var(--muted);text-align:center}
-
-  @media(max-width:600px){
-    .brand .s{display:none}
-    .top-actions .btn span.lbl{display:none}
-    .grid2{grid-template-columns:1fr}
-    main{padding:0 10px 80px}
-    .stats{padding:12px 10px 4px}
-    nav.tabs{padding:12px 10px 0}
-  }
-</style>
-</head>
-<body>
-<header class="top">
-  <div class="brand">
-    <span class="k">Ministerio de Visitación</span>
-    <span class="s">Gestión y seguimiento pastoral</span>
-  </div>
-  <div class="top-actions">
-    <span class="nube" id="nubeStatus"></span>
-    <button class="btn btn-ghost" id="btnExport" title="Exportar a Excel">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-      <span class="lbl">Exportar</span>
-    </button>
-    <button class="btn btn-ghost" id="btnSettings" title="Configuración">
-      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.4H10.5l-.4 2.4a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L6 11a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.4h3.6l.4-2.4a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6a7 7 0 0 0 .1-1z"/></svg>
-    </button>
-    <button class="btn btn-primary" id="btnNew">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      <span class="lbl">Nueva visita</span>
-    </button>
-  </div>
-</header>
-
-<section class="stats" id="stats"></section>
-
-<nav class="tabs" id="tabs">
-  <button class="tab active" data-view="tablero">Tablero</button>
-  <button class="tab" data-view="seguimiento">Seguimiento <span class="b" id="bSeg">0</span></button>
-  <button class="tab" data-view="visitadores">Visitadores <span class="b" id="bVis">0</span></button>
-</nav>
-
-<main>
-  <div class="panel" id="panel"></div>
-</main>
-
-<button class="fab" id="fab">
-  <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z"/></svg>
-  Asistente
-</button>
-
-<!-- MODAL VISITA -->
-<div class="ov" id="ovVisita"><div class="modal" id="modalVisita"></div></div>
-<!-- MODAL VISITADOR -->
-<div class="ov" id="ovVisitador"><div class="modal" id="modalVisitador"></div></div>
-<!-- MODAL SETTINGS -->
-<div class="ov" id="ovSettings"><div class="modal" id="modalSettings"></div></div>
-
-<!-- CHAT -->
-<div class="chat-ov" id="chatOv">
-  <div class="chat-bg" id="chatBg"></div>
-  <div class="chat">
-    <div class="chat-h">
-      <svg class="icon" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z"/></svg>
-      <span class="ch-t">Asistente del ministerio</span>
-      <button class="x" id="chatClose" style="background:rgba(255,255,255,.15);color:#fff">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="chat-body" id="chatBody"></div>
-    <div class="chat-in">
-      <textarea id="chatInput" placeholder="Escribe una actualización…"></textarea>
-      <button class="chat-send" id="chatSend">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<!-- LOGIN -->
-<div class="login-ov" id="loginOv">
-  <div class="login-card">
-    <div class="login-brand">
-      <div class="lb-k">Ministerio de Visitación</div>
-      <div class="lb-s">Acceso al sistema</div>
-    </div>
-    <div class="fld"><label>Cédula</label><input id="lg_email" type="text" inputmode="numeric" placeholder="Tu número de cédula" autocomplete="username"></div>
-    <div class="fld"><label>Contraseña</label><input id="lg_pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
-    <div class="lg-error" id="lg_error"></div>
-    <button class="btn btn-primary" id="lg_btn" style="justify-content:center;width:100%;padding:12px">Entrar</button>
-    <div class="lg-hint" id="lg_hint">Conectando con el servidor…</div>
-  </div>
-</div>
-
-<script>
-/* ---------- Conexión con Supabase ---------- */
-const SUPABASE_URL='https://gwhynitzqiejrxxptvcs.supabase.co';
-const SUPABASE_KEY='sb_publishable_pEj6klYB8RetaU-ICJpm9g_piYq03qI';
-let sb=null;
-try{ if(window.supabase&&SUPABASE_URL.startsWith('http')) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){}
-
-/* Caché local (respaldo offline / vista previa) */
-const Store=(()=>{let mem={},backend='memoria';try{localStorage.setItem('__t','1');localStorage.removeItem('__t');backend='local'}catch(e){}
- return{backend,get(k){if(backend==='local'){try{return localStorage.getItem(k)}catch(e){}}return mem[k]??null},
- set(k,v){if(backend==='local'){try{localStorage.setItem(k,v);return}catch(e){}}mem[k]=v}}})();
-
-/* ---------- Estado ---------- */
-const ESTADOS=['Solicitada','Asignada','Programada','Realizada','Evaluada','Cerrada'];
-const COLORES_EST=['#9aa7a1','#C9872F','#7a6cae','#4E8068','#2f7d6e','#14564E'];
-const TIPOS={domiciliaria:'Domiciliaria',hospitalaria:'Hospitalaria',funeraria:'Funeraria'};
-const ORIGENES=['Iglesia','Puesto de visitación','Call center','Consejería','Página web','Otro'];
-const SEG_TIPOS=['Ninguno','Nueva visita','Llamada de seguimiento','Consejería','Atención a otra persona'];
-
-let state={visitas:[],visitadores:[],apiKey:'',model:''};
-function cargarLocal(){try{const d=Store.get('mv_data');if(d)state=Object.assign(state,JSON.parse(d))}catch(e){}}
-async function cargarRemoto(){
-  if(!sb)return cargarLocal();
-  try{
-    const{data,error}=await sb.from('app_data').select('data').eq('id','main').maybeSingle();
-    if(error)throw error;
-    if(data&&data.data)state=Object.assign({visitas:[],visitadores:[],apiKey:'',model:''},data.data);
-    Store.set('mv_data',JSON.stringify(state));
-  }catch(e){cargarLocal()}
-}
-let saveT;
-function guardar(){
-  Store.set('mv_data',JSON.stringify(state));
-  if(sb){clearTimeout(saveT);saveT=setTimeout(guardarRemoto,600)}
-}
-async function guardarRemoto(){
-  if(!sb)return;
-  try{
-    const{error}=await sb.from('app_data').upsert({id:'main',data:state,updated_at:new Date().toISOString()});
-    if(error)throw error;
-    setNube(true);
-  }catch(e){setNube(false);toast('Sin conexión: se guardó solo en este equipo')}
-}
-function setNube(ok){const el=document.getElementById('nubeStatus');if(el){el.textContent=ok?'Sincronizado':'Sin conexión';el.className='nube '+(ok?'on':'off')}}
-const hoy=()=>new Date().toISOString().slice(0,10);
-const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
-
-/* ---------- Utilidades de fecha ---------- */
-function diasDesde(iso){if(!iso)return 0;const d=(Date.now()-new Date(iso).getTime())/86400000;return Math.floor(d)}
-function fmtFecha(iso){if(!iso)return'—';const[a,m,d]=iso.split('T')[0].split('-');return`${d}/${m}/${a}`}
-function esAtrasada(v){if(v.estado==='Cerrada')return false;return diasDesde(v.actualizado)>7}
-function segPendiente(v){return v.seguimientoTipo&&v.seguimientoTipo!=='Ninguno'&&v.estado!=='Cerrada'}
-function segVencido(v){return segPendiente(v)&&v.fechaSeguimiento&&v.fechaSeguimiento<hoy()}
-
-/* ---------- Render principal ---------- */
-let vista='tablero';
-let periodoVis='mes';
-function render(){renderStats();renderTabs();
- if(vista==='tablero')renderTablero();
- else if(vista==='seguimiento')renderSeguimiento();
- else renderVisitadores();}
-
-function renderStats(){
-  const activas=state.visitas.filter(v=>v.estado!=='Cerrada').length;
-  const atras=state.visitas.filter(esAtrasada).length;
-  const seg=state.visitas.filter(segPendiente).length;
-  const mes=hoy().slice(0,7);
-  const cerradasMes=state.visitas.filter(v=>v.estado==='Cerrada'&&(v.fechaRealizacion||v.actualizado||'').slice(0,7)===mes).length;
-  document.getElementById('stats').innerHTML=`
-    <div class="stat"><div class="n">${activas}</div><div class="l">Visitas activas</div></div>
-    <div class="stat alert"><div class="n">${atras}</div><div class="l">Sin avanzar (+7 días)</div></div>
-    <div class="stat accent"><div class="n">${seg}</div><div class="l">Seguimientos pendientes</div></div>
-    <div class="stat ok"><div class="n">${cerradasMes}</div><div class="l">Cerradas este mes</div></div>`;
-}
-function renderTabs(){
-  document.getElementById('bSeg').textContent=state.visitas.filter(segPendiente).length;
-  document.getElementById('bVis').textContent=state.visitadores.length;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===vista));
-}
-
-/* ---------- TABLERO ---------- */
-function tipoClass(t){return t==='domiciliaria'?'dom':t==='hospitalaria'?'hos':'fun'}
-let tableroAbiertos=null;
-function renderTablero(){
-  const p=document.getElementById('panel');
-  if(!state.visitas.length){p.className='panel';p.innerHTML=emptyState('clipboard','Aún no hay visitas registradas','Usa “Nueva visita” o háblale al Asistente para cargar la primera.');return}
-  if(tableroAbiertos===null)tableroAbiertos=new Set(['Asignada','Programada']);
-  let secs='';
-  ESTADOS.forEach((est,i)=>{
-    const items=state.visitas.filter(v=>v.estado===est);
-    const open=tableroAbiertos.has(est);
-    const body=items.length?items.map(cardHTML).join(''):'<div class="col-empty">Sin visitas</div>';
-    secs+=`<div class="acc-sec ${open?'open':''}">
-      <div class="acc-head" data-toggle="${est}">
-        <span class="dot" style="background:${COLORES_EST[i]}"></span>
-        <span class="t">${est}</span><span class="c">${items.length}</span>
-        <svg class="chev" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="acc-body">${body}</div></div>`;
-  });
-  p.className='panel';p.innerHTML=`<div class="acc">${secs}</div>`;
-  p.querySelectorAll('.acc-head').forEach(h=>h.onclick=()=>{
-    const est=h.dataset.toggle;
-    if(tableroAbiertos.has(est))tableroAbiertos.delete(est);else tableroAbiertos.add(est);
-    renderTablero();
-  });
-  p.querySelectorAll('.card').forEach(c=>c.onclick=()=>abrirVisita(c.dataset.id));
-}
-function cardHTML(v){
-  const late=esAtrasada(v),due=segVencido(v);
-  const cls=tipoClass(v.tipo);
-  const dias=v.estado!=='Cerrada'?diasEnEtapa(v):null;
-  return `<div class="card t-${cls} ${late?'late':''}" data-id="${v.id}">
-    <div class="ct">${escapeHtml(v.solicitante||'(sin nombre)')}${v.cedula?`<span class="cc">CC ${escapeHtml(v.cedula)}</span>`:''}</div>
-    <div class="meta">
-      <span class="pill ${cls}">${TIPOS[v.tipo]}</span>
-      ${late?'<span class="pill warn">Sin avanzar</span>':''}
-      ${due?'<span class="pill due">Seguimiento vencido</span>':''}
-    </div>
-    <div class="card-foot">
-      ${v.visitador?`<span class="vis"><svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>${escapeHtml(v.visitador)}</span>`:'<span class="vis" style="color:#a8b3ad">Sin asignar</span>'}
-      ${dias!=null?`<span class="dias">${dias}d</span>`:''}
-    </div>
-  </div>`;
-}
-
-/* ---------- SEGUIMIENTO ---------- */
-function renderSeguimiento(){
-  const p=document.getElementById('panel');p.className='panel';
-  const items=state.visitas.filter(segPendiente)
-    .sort((a,b)=>(a.fechaSeguimiento||'9999')<(b.fechaSeguimiento||'9999')?-1:1);
-  if(!items.length){p.innerHTML=emptyState('bell','Nada pendiente por ahora','Cuando una visita realizada requiera otra acción, aparecerá aquí.');return}
-  let rows=items.map(v=>{
-    const venc=segVencido(v);
-    return `<div class="list-row" data-id="${v.id}">
-      <div class="lr-main">
-        <div class="lr-title">${escapeHtml(v.solicitante||'(sin nombre)')} <span class="pill ${tipoClass(v.tipo)}" style="margin-left:4px">${TIPOS[v.tipo]}</span></div>
-        <div class="lr-sub">${escapeHtml(v.seguimientoTipo)}${v.seguimientoNota?' · '+escapeHtml(v.seguimientoNota):''}</div>
-      </div>
-      <div class="lr-side">
-        <div class="due-d" style="color:${venc?'var(--alert)':'var(--ink)'}">${fmtFecha(v.fechaSeguimiento)}</div>
-        <div>${venc?'Vencido':'Programado'}</div>
-      </div></div>`;
-  }).join('');
-  p.innerHTML=`<div class="sec-bar"><h2>Seguimientos pendientes</h2></div><div class="list-wrap">${rows}</div>`;
-  p.querySelectorAll('.list-row').forEach(r=>r.onclick=()=>abrirVisita(r.dataset.id));
-}
-
-/* ---------- VISITADORES (tablero de carga) ---------- */
-const PERIODOS={mes:'Este mes','3m':'Últimos 3 meses',anio:'Este año',todo:'Histórico'};
-const EST_ACTIVAS=['Asignada','Programada'];
-const EST_HECHAS=['Realizada','Evaluada','Cerrada'];
-function fechaRef(v){return(v.fechaRealizacion||v.actualizado||'').slice(0,10)}
-function enPeriodo(fecha,per){
-  if(!fecha)return false;
-  if(per==='todo')return true;
-  if(per==='mes')return fecha.slice(0,7)===hoy().slice(0,7);
-  if(per==='anio')return fecha.slice(0,4)===hoy().slice(0,4);
-  if(per==='3m'){const lim=new Date();lim.setDate(lim.getDate()-90);return fecha>=lim.toISOString().slice(0,10)}
-  return true;
-}
-function statsDe(nombre,per){
-  const suyas=state.visitas.filter(v=>v.visitador===nombre);
-  const hechas=suyas.filter(v=>EST_HECHAS.includes(v.estado)&&enPeriodo(fechaRef(v),per));
-  const ciclos=hechas.map(tiempoCiclo).filter(d=>d!=null);
-  const prom=ciclos.length?Math.round(ciclos.reduce((a,b)=>a+b,0)/ciclos.length):null;
-  return{
-    activas:suyas.filter(v=>EST_ACTIVAS.includes(v.estado)).length,
-    hechas:hechas.length,
-    prom
-  };
-}
-function rosterCombinado(){
-  const nombres=new Map();
-  state.visitadores.forEach(x=>nombres.set(x.nombre,{...x,registrado:true}));
-  state.visitas.forEach(v=>{if(v.visitador&&!nombres.has(v.visitador))
-    nombres.set(v.visitador,{id:null,nombre:v.visitador,telefono:'',zona:'',tipos:[],activo:true,registrado:false})});
-  return[...nombres.values()];
-}
-function renderVisitadores(){
-  const p=document.getElementById('panel');p.className='panel';
-  const roster=rosterCombinado();
-  if(!roster.length){
-    p.innerHTML=`<div class="sec-bar"><h2>Equipo de visitadores</h2>
-      <div class="sb-act"><button class="btn btn-quiet" id="btnNewVis"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Agregar</button></div></div>
-      ${emptyState('users','No hay visitadores cargados','Registra a tu equipo para repartir la carga y llevar la cuenta de cada visita.')}`;
-    const b=document.getElementById('btnNewVis');if(b)b.onclick=()=>abrirVisitador();return;
-  }
-  const filas=roster.map(x=>({x,s:statsDe(x.nombre,periodoVis)}))
-    .sort((a,b)=>(b.s.activas-a.s.activas)||(b.s.hechas-a.s.hechas));
-  const maxHechas=Math.max(1,...filas.map(f=>f.s.hechas));
-  const totalActivas=filas.reduce((a,f)=>a+f.s.activas,0);
-  const totalHechas=filas.reduce((a,f)=>a+f.s.hechas,0);
-
-  const chips=Object.entries(PERIODOS).map(([k,n])=>
-    `<div class="chip ${periodoVis===k?'on':''}" data-per="${k}">${n}</div>`).join('');
-
-  const rows=filas.map(({x,s})=>{
-    const w=Math.round(s.hechas/maxHechas*100);
-    const carga=s.activas>=6?'alta':s.activas>=3?'media':'baja';
-    return `<div class="vis-card" ${x.registrado?`data-id="${x.id}"`:`data-add="${escapeAttr(x.nombre)}"`}>
-      <div class="vc-top">
-        <div class="vc-id">
-          <div class="vc-name">${escapeHtml(x.nombre)}
-            ${x.activo?'':'<span class="pill warn">Inactivo</span>'}
-            ${x.registrado?'':'<span class="pill due">No registrado</span>'}</div>
-          <div class="vc-sub">${x.zona?escapeHtml(x.zona)+' · ':''}${(x.tipos||[]).map(t=>TIPOS[t]).join(', ')||'Sin tipos definidos'}</div>
-        </div>
-        <div class="vc-nums">
-          <div class="vc-num"><span class="vn vn-act carga-${carga}">${s.activas}</span><span class="vl">Activas</span></div>
-          <div class="vc-num"><span class="vn">${s.hechas}</span><span class="vl">Realizadas</span></div>
-          <div class="vc-num"><span class="vn">${s.prom!=null?s.prom:'—'}</span><span class="vl">Días prom.</span></div>
-        </div>
-      </div>
-      <div class="vc-bar"><span style="width:${w}%"></span></div>
-    </div>`;
-  }).join('');
-
-  p.innerHTML=`
-    <div class="sec-bar"><h2>Carga de los visitadores</h2>
-      <div class="sb-act"><button class="btn btn-quiet" id="btnNewVis"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Agregar</button></div></div>
-    <div class="vis-summary">Realizadas (${PERIODOS[periodoVis].toLowerCase()}): <b>${totalHechas}</b> · Activas en curso: <b>${totalActivas}</b></div>
-    <div class="filters" style="padding-top:6px"><div class="seg-types" id="perChips">${chips}</div></div>
-    <div class="list-wrap" style="padding-top:6px">${rows}</div>`;
-
-  document.getElementById('btnNewVis').onclick=()=>abrirVisitador();
-  p.querySelectorAll('#perChips .chip').forEach(c=>c.onclick=()=>{periodoVis=c.dataset.per;render()});
-  p.querySelectorAll('.vis-card[data-id]').forEach(r=>r.onclick=()=>abrirVisitador(r.dataset.id));
-  p.querySelectorAll('.vis-card[data-add]').forEach(r=>r.onclick=()=>abrirVisitador(null,r.dataset.add));
-}
-
-function emptyState(ic,t,s){
-  const icons={clipboard:'<rect x="8" y="4" width="8" height="4" rx="1"/><rect x="5" y="6" width="14" height="15" rx="2"/>',
-    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
-    users:'<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 0 0 0-6M22 21a7 7 0 0 0-4-6.3"/>'};
-  return `<div class="empty-state"><svg class="e-ic" viewBox="0 0 24 24" fill="none">${icons[ic]}</svg>
-    <div class="e-t">${t}</div><div>${s}</div></div>`;
-}
-
-/* ---------- MODAL VISITA ---------- */
-function abrirVisita(id){
-  const v=id?state.visitas.find(x=>x.id===id):nuevaVisita();
-  const esNueva=!id;
-  const idx=ESTADOS.indexOf(v.estado);
-  const visOpts=['<option value="">— Sin asignar —</option>'].concat(
-    state.visitadores.filter(x=>x.activo).map(x=>`<option ${x.nombre===v.visitador?'selected':''}>${escapeHtml(x.nombre)}</option>`)).join('');
-  const m=document.getElementById('modalVisita');
-  m.innerHTML=`
-    <div class="modal-h"><h3>${esNueva?'Nueva visita':'Ficha de la visita'}</h3>
-      <button class="x" data-close><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="modal-b">
-      <div class="fld"><label>Etapa del proceso</label>
-        <div class="stepper" id="stepper">${ESTADOS.map((e,i)=>`<div class="step ${i<idx?'done':''} ${i===idx?'cur':''}" data-est="${e}">${e}</div>`).join('')}</div>
-        <div class="hint">Toca una etapa para moverla.</div></div>
-      <div class="grid2">
-        <div class="fld"><label>Nombre del solicitante</label>
-          <input id="f_solicitante" value="${escapeAttr(v.solicitante)}" placeholder="Ej. María Restrepo"></div>
-        <div class="fld"><label>Cédula</label>
-          <input id="f_cedula" value="${escapeAttr(v.cedula)}" placeholder="Ej. 52123456"></div>
-      </div>
-      <div class="grid2">
-        <div class="fld"><label>Tipo de visita</label>
-          <select id="f_tipo">${Object.entries(TIPOS).map(([k,n])=>`<option value="${k}" ${v.tipo===k?'selected':''}>${n}</option>`).join('')}</select></div>
-        <div class="fld"><label>Visitador que la atiende</label><select id="f_visitador">${visOpts}</select></div>
-      </div>
-      <div class="grid2">
-        <div class="fld"><label>Fecha de solicitud</label><input type="date" id="f_fechaSolicitud" value="${v.fechaSolicitud||''}"></div>
-        <div class="fld"><label>Fecha de asignación</label><input type="date" id="f_fechaAsignacion" value="${v.fechaAsignacion||''}"></div>
-      </div>
-      <div class="grid2">
-        <div class="fld"><label>Fecha programada</label><input type="date" id="f_fechaProgramada" value="${v.fechaProgramada||''}"></div>
-        <div class="fld"><label>Fecha en que se realizó</label><input type="date" id="f_fechaRealizacion" value="${v.fechaRealizacion||''}"></div>
-      ${esNueva?'':`<div class="tiempos" id="tiempos"></div>`}
-      <div class="fld"><label>Observaciones / novedades</label>
-        <textarea id="f_observaciones" placeholder="Cualquier novedad que se salga de lo normal">${escapeHtml(v.observaciones)}</textarea></div>
-
-      <div class="fld" style="border-top:1px solid var(--line);padding-top:14px"><label>¿Qué debe ocurrir después?</label>
-        <div class="seg-types" id="segTypes">${SEG_TIPOS.map(s=>`<div class="chip ${(v.seguimientoTipo||'Ninguno')===s?'on':''}" data-seg="${s}">${s}</div>`).join('')}</div></div>
-      <div class="grid2">
-        <div class="fld"><label>Fecha del próximo seguimiento</label><input type="date" id="f_fechaSeguimiento" value="${v.fechaSeguimiento||''}"></div>
-        <div class="fld"><label>Nota de la acción pendiente</label><input id="f_seguimientoNota" value="${escapeAttr(v.seguimientoNota)}" placeholder="Ej. Llamada de control"></div>
-      </div>
-      ${esNueva?'':`<div class="fld" style="border-top:1px solid var(--line);padding-top:14px">
-        <label>Recordatorio para el visitador</label>
-        <textarea id="f_recordatorio" readonly style="min-height:130px;background:var(--surface-2)">${escapeHtml(generarRecordatorio(v))}</textarea>
-        <div class="rec-btns">
-          <button class="btn btn-quiet" id="btnCopiarRec" style="flex:1;justify-content:center">Copiar mensaje</button>
-          ${recTel(v)?`<button class="btn btn-quiet" id="btnWA" style="flex:1;justify-content:center">Abrir WhatsApp</button>`:''}
-        </div>
-        <div class="hint">Pégalo en el chat del visitador. El mensaje se arma solo con los datos de esta visita.</div></div>`}
-    </div>
-    <div class="modal-f">
-      ${esNueva?'':'<button class="danger-link" id="delVisita">Eliminar visita</button>'}
-      <button class="btn btn-quiet" data-close>Cancelar</button>
-      <button class="btn btn-primary" id="saveVisita">${esNueva?'Crear visita':'Guardar cambios'}</button>
-    </div>`;
-  let estadoSel=v.estado, segSel=v.seguimientoTipo||'Ninguno';
-  m.querySelectorAll('.step').forEach(s=>s.onclick=()=>{
-    estadoSel=s.dataset.est;const ni=ESTADOS.indexOf(estadoSel);
-    m.querySelectorAll('.step').forEach((el,i)=>{el.classList.toggle('done',i<ni);el.classList.toggle('cur',i===ni)});
-  });
-  m.querySelectorAll('.chip[data-seg]').forEach(c=>c.onclick=()=>{
-    segSel=c.dataset.seg;m.querySelectorAll('.chip[data-seg]').forEach(x=>x.classList.toggle('on',x===c));
-  });
-  if(!esNueva){
-    const te=document.getElementById('tiempos');
-    const enEtapa=diasEnEtapa(v),ciclo=tiempoCiclo(v);
-    te.innerHTML=`<div class="ti"><span class="ti-n">${enEtapa}</span><span class="ti-l">días en “${v.estado}”</span></div>
-      <div class="ti"><span class="ti-n">${ciclo!=null?ciclo:'—'}</span><span class="ti-l">días de solicitud a realización</span></div>`;
-    const bc=document.getElementById('btnCopiarRec');
-    if(bc)bc.onclick=()=>copiar(generarRecordatorio(v));
-    const bw=document.getElementById('btnWA');
-    if(bw)bw.onclick=()=>{let n=recTel(v);if(n&&!n.startsWith('57'))n='57'+n;
-      window.open('https://wa.me/'+n+'?text='+encodeURIComponent(generarRecordatorio(v)),'_blank')};
-  }
-  const get=id=>{const el=document.getElementById(id);return el?el.value.trim():''};
-  document.getElementById('saveVisita').onclick=()=>{
-    const sol=get('f_solicitante');
-    if(!sol){toast('Escribe el nombre del solicitante');return}
-    const datos={solicitante:sol,cedula:get('f_cedula'),tipo:get('f_tipo'),visitador:get('f_visitador'),observaciones:get('f_observaciones'),
-      fechaSolicitud:get('f_fechaSolicitud'),fechaAsignacion:get('f_fechaAsignacion'),fechaProgramada:get('f_fechaProgramada'),fechaRealizacion:get('f_fechaRealizacion'),
-      fechaSeguimiento:get('f_fechaSeguimiento'),seguimientoNota:get('f_seguimientoNota'),seguimientoTipo:segSel};
-    const cambioEstado=estadoSel!==v.estado;
-    datos.estado=estadoSel;
-    if(esNueva){Object.assign(v,datos);registrarEtapa(v,estadoSel,true);state.visitas.unshift(v)}
-    else{Object.assign(v,datos);if(cambioEstado)registrarEtapa(v,estadoSel)}
-    v.actualizado=new Date().toISOString();
-    guardar();cerrarModales();render();toast(esNueva?'Visita creada':'Cambios guardados');
-  };
-  const del=document.getElementById('delVisita');
-  if(del)del.onclick=()=>{if(confirm('¿Eliminar esta visita de forma permanente?')){
-    state.visitas=state.visitas.filter(x=>x.id!==v.id);guardar();cerrarModales();render();toast('Visita eliminada')}};
-  m.querySelectorAll('[data-close]').forEach(b=>b.onclick=cerrarModales);
-  document.getElementById('ovVisita').classList.add('open');
-}
-function nuevaVisita(){return{id:uid('v'),solicitante:'',cedula:'',tipo:'domiciliaria',visitador:'',observaciones:'',
-  estado:'Solicitada',fechaSolicitud:hoy(),fechaAsignacion:'',fechaProgramada:'',fechaRealizacion:'',
-  seguimientoTipo:'Ninguno',fechaSeguimiento:'',seguimientoNota:'',historial:[],
-  creado:new Date().toISOString(),actualizado:new Date().toISOString()}}
-
-/* ---------- Tiempos y etapas ---------- */
-function registrarEtapa(v,estado,reset){
-  if(!Array.isArray(v.historial)||reset)v.historial=[];
-  v.historial.push({e:estado,t:new Date().toISOString()});
-}
-function diasEntre(a,b){if(!a||!b)return null;return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000))}
-function diasEnEtapa(v){
-  let desde=v.actualizado;
-  if(Array.isArray(v.historial)&&v.historial.length){
-    const ult=[...v.historial].reverse().find(h=>h.e===v.estado);
-    if(ult)desde=ult.t;
-  }
-  return diasDesde(desde);
-}
-function tiempoCiclo(v){
-  if(v.fechaRealizacion&&v.fechaSolicitud)return diasEntre(v.fechaSolicitud,v.fechaRealizacion);
-  return null;
-}
-function recTel(v){const x=state.visitadores.find(p=>p.nombre===v.visitador);return x&&x.telefono?x.telefono.replace(/\D/g,''):''}
-function generarRecordatorio(v){
-  const dias=v.fechaAsignacion?diasDesde(v.fechaAsignacion):null;
-  const L=[];
-  L.push(`Hola${v.visitador?' '+v.visitador:''}, un recordatorio de esta visitación:`);
-  L.push('');
-  L.push(`Solicitante: ${v.solicitante||'(sin nombre)'}`);
-  L.push(`Tipo: ${TIPOS[v.tipo]}`);
-  if(v.fechaAsignacion)L.push(`Se asignó el ${fmtFecha(v.fechaAsignacion)}.`);
-  if(v.estado==='Programada'&&v.fechaProgramada)L.push(`Quedó programada para el ${fmtFecha(v.fechaProgramada)}.`);
-  if(v.fechaRealizacion)L.push(`Se realizó el ${fmtFecha(v.fechaRealizacion)}.`);
-  else if(dias!=null)L.push(`Lleva ${dias} día${dias===1?'':'s'} desde que se asignó.`);
-  if(v.seguimientoTipo&&v.seguimientoTipo!=='Ninguno')L.push(`Acción siguiente: ${v.seguimientoTipo}${v.fechaSeguimiento?' ('+fmtFecha(v.fechaSeguimiento)+')':''}.`);
-  L.push('');
-  L.push('Quedo atento. ¡Gracias por tu servicio!');
-  return L.join('\n');
-}
-function copiar(txt){
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(()=>toast('Mensaje copiado')).catch(()=>copiaFallback(txt));
-  }else copiaFallback(txt);
-}
-function copiaFallback(txt){
-  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
-  document.body.appendChild(ta);ta.focus();ta.select();
-  try{document.execCommand('copy');toast('Mensaje copiado')}catch(e){toast('No se pudo copiar')}
-  ta.remove();
-}
-
-/* ---------- MODAL VISITADOR ---------- */
-function abrirVisitador(id,nombrePrefill){
-  const x=id?state.visitadores.find(v=>v.id===id):{id:uid('p'),nombre:nombrePrefill||'',telefono:'',zona:'',tipos:[],activo:true};
-  const esNuevo=!id;
-  const m=document.getElementById('modalVisitador');
-  m.innerHTML=`
-    <div class="modal-h"><h3>${esNuevo?'Nuevo visitador':'Visitador'}</h3>
-      <button class="x" data-close><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="modal-b">
-      <div class="fld"><label>Nombre completo</label><input id="v_nombre" value="${escapeAttr(x.nombre)}"></div>
-      <div class="grid2">
-        <div class="fld"><label>Teléfono</label><input id="v_telefono" value="${escapeAttr(x.telefono)}"></div>
-        <div class="fld"><label>Zona</label><input id="v_zona" value="${escapeAttr(x.zona)}"></div>
-      </div>
-      <div class="fld"><label>Tipos de visita que atiende</label>
-        <div class="seg-types" id="vTipos">${Object.entries(TIPOS).map(([k,n])=>`<div class="chip ${x.tipos.includes(k)?'on':''}" data-t="${k}">${n}</div>`).join('')}</div></div>
-      <div class="fld"><label>Estado</label>
-        <select id="v_activo"><option value="1" ${x.activo?'selected':''}>Activo</option><option value="0" ${x.activo?'':'selected'}>Inactivo</option></select></div>
-    </div>
-    <div class="modal-f">
-      ${esNuevo?'':'<button class="danger-link" id="delVis">Eliminar</button>'}
-      <button class="btn btn-quiet" data-close>Cancelar</button>
-      <button class="btn btn-primary" id="saveVis">${esNuevo?'Agregar':'Guardar'}</button>
-    </div>`;
-  let tipos=[...x.tipos];
-  m.querySelectorAll('.chip[data-t]').forEach(c=>c.onclick=()=>{
-    const k=c.dataset.t;if(tipos.includes(k))tipos=tipos.filter(t=>t!==k);else tipos.push(k);
-    c.classList.toggle('on')});
-  document.getElementById('saveVis').onclick=()=>{
-    const nombre=document.getElementById('v_nombre').value.trim();
-    if(!nombre){toast('Escribe el nombre');return}
-    Object.assign(x,{nombre,telefono:document.getElementById('v_telefono').value.trim(),
-      zona:document.getElementById('v_zona').value.trim(),tipos,
-      activo:document.getElementById('v_activo').value==='1'});
-    if(esNuevo)state.visitadores.push(x);
-    guardar();cerrarModales();render();toast(esNuevo?'Visitador agregado':'Guardado');
-  };
-  const d=document.getElementById('delVis');
-  if(d)d.onclick=()=>{if(confirm('¿Eliminar este visitador?')){state.visitadores=state.visitadores.filter(v=>v.id!==x.id);guardar();cerrarModales();render();toast('Eliminado')}};
-  m.querySelectorAll('[data-close]').forEach(b=>b.onclick=cerrarModales);
-  document.getElementById('ovVisitador').classList.add('open');
-}
-
-/* ---------- SETTINGS ---------- */
-function abrirSettings(){
-  const m=document.getElementById('modalSettings');
-  m.innerHTML=`
-    <div class="modal-h"><h3>Configuración</h3>
-      <button class="x" data-close><svg class="icon" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="modal-b">
-      <div class="fld"><label>Clave de API de Anthropic (para el Asistente)</label>
-        <input id="s_key" type="password" value="${escapeAttr(state.apiKey)}" placeholder="sk-ant-...">
-        <div class="hint">Necesaria solo cuando publiques la página en tu propio sitio (GitHub Pages). Se guarda únicamente en este dispositivo. En la vista previa de Claude el Asistente funciona sin clave.</div></div>
-      <div class="fld"><label>Modelo (opcional)</label>
-        <input id="s_model" value="${escapeAttr(state.model)}" placeholder="claude-haiku-4-5-20251001">
-        <div class="hint">Haiku es el más económico. Si lo dejas vacío se usa una opción por defecto.</div></div>
-      <div class="fld" style="border-top:1px solid var(--line);padding-top:14px">
-        <label>Almacenamiento</label>
-        <div class="hint">${sb?'Los datos se sincronizan en el servidor (Supabase) y se comparten entre todos los dispositivos. Se guarda también una copia local por si te quedas sin internet.':'Modo local: los datos se guardan solo en este dispositivo.'}</div></div>
-      ${sb?'<div class="fld"><button class="btn btn-quiet" id="s_logout" style="justify-content:center">Cerrar sesión</button></div>':''}
-      <div class="fld"><button class="btn btn-quiet" id="s_import" style="justify-content:center">Importar datos desde un archivo</button>
-        <input type="file" id="s_file" accept="application/json" style="display:none"></div>
-    </div>
-    <div class="modal-f">
-      <button class="danger-link" id="s_reset">Borrar todos los datos</button>
-      <button class="btn btn-quiet" id="s_backup">Descargar respaldo</button>
-      <button class="btn btn-primary" id="s_save">Guardar</button>
-    </div>`;
-  document.getElementById('s_save').onclick=()=>{
-    state.apiKey=document.getElementById('s_key').value.trim();
-    state.model=document.getElementById('s_model').value.trim();
-    guardar();cerrarModales();toast('Configuración guardada');
-  };
-  document.getElementById('s_backup').onclick=()=>{
-    const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-    a.download='respaldo-visitacion-'+hoy()+'.json';a.click();
-  };
-  document.getElementById('s_import').onclick=()=>document.getElementById('s_file').click();
-  document.getElementById('s_file').onchange=e=>{
-    const f=e.target.files[0];if(!f)return;const r=new FileReader();
-    r.onload=()=>{try{const d=JSON.parse(r.result);state=Object.assign(state,d);guardar();cerrarModales();render();toast('Datos importados')}catch(err){toast('Archivo no válido')}};
-    r.readAsText(f);
-  };
-  document.getElementById('s_reset').onclick=()=>{if(confirm('Esto borrará todas las visitas y visitadores. ¿Continuar?')){
-    state={visitas:[],visitadores:[],apiKey:'',model:''};guardar();cerrarModales();render();toast('Datos borrados')}};
-  const lo=document.getElementById('s_logout');
-  if(lo)lo.onclick=()=>{if(confirm('¿Cerrar sesión en este dispositivo?'))cerrarSesion()};
-  m.querySelectorAll('[data-close]').forEach(b=>b.onclick=cerrarModales);
-  document.getElementById('ovSettings').classList.add('open');
-}
-
-function cerrarModales(){document.querySelectorAll('.ov').forEach(o=>o.classList.remove('open'))}
-
-/* ---------- EXPORTAR A EXCEL ---------- */
-function exportarExcel(){
-  if(!state.visitas.length){toast('No hay visitas para exportar');return}
-  const filas=state.visitas.map(v=>({
-    'Solicitante':v.solicitante,'Cédula':v.cedula,'Tipo':TIPOS[v.tipo],'Estado':v.estado,'Visitador':v.visitador,
-    'F. solicitud':v.fechaSolicitud,'F. asignación':v.fechaAsignacion,'F. programada':v.fechaProgramada,'F. realizada':v.fechaRealizacion,
-    'Días de atención':tiempoCiclo(v)??'',
-    'Seguimiento':v.seguimientoTipo,'F. seguimiento':v.fechaSeguimiento,'Nota seguimiento':v.seguimientoNota,
-    'Observaciones':v.observaciones
-  }));
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.json_to_sheet(filas);
-  ws['!cols']=Object.keys(filas[0]).map(()=>({wch:18}));
-  XLSX.utils.book_append_sheet(wb,ws,'Visitas');
-  if(state.visitadores.length){
-    const wsv=XLSX.utils.json_to_sheet(state.visitadores.map(x=>({
-      'Nombre':x.nombre,'Teléfono':x.telefono,'Zona':x.zona,
-      'Tipos':(x.tipos||[]).map(t=>TIPOS[t]).join(', '),'Estado':x.activo?'Activo':'Inactivo'})));
-    XLSX.utils.book_append_sheet(wb,wsv,'Visitadores');
-  }
-  // Resumen de carga por visitador
-  const roster=rosterCombinado();
-  if(roster.length){
-    const resumen=roster.map(x=>{
-      const total=statsDe(x.nombre,'todo'),mes=statsDe(x.nombre,'mes'),anio=statsDe(x.nombre,'anio');
-      return{'Visitador':x.nombre,'Activas en curso':total.activas,
-        'Realizadas (este mes)':mes.hechas,'Realizadas (este año)':anio.hechas,
-        'Realizadas (histórico)':total.hechas,'Días promedio de atención':total.prom??''};
-    }).sort((a,b)=>b['Activas en curso']-a['Activas en curso']);
-    const wsr=XLSX.utils.json_to_sheet(resumen);
-    wsr['!cols']=Object.keys(resumen[0]).map(()=>({wch:22}));
-    XLSX.utils.book_append_sheet(wb,wsr,'Carga por visitador');
-  }
-  XLSX.writeFile(wb,'visitaciones-'+hoy()+'.xlsx');
-  toast('Excel descargado');
-}
-
-/* ---------- ASISTENTE IA ---------- */
-let chatMsgs=[];
-function abrirChat(){
-  document.getElementById('chatOv').classList.add('open');
-  if(!chatMsgs.length){
-    pushChat('a','Hola Benjamín. Dime qué pasó con una visita y yo actualizo el tablero. Por ejemplo:');
-    const cont=document.createElement('div');cont.style.cssText='display:flex;flex-direction:column;gap:6px;align-self:flex-start;max-width:90%';
-    ['María Restrepo con cédula 52123456 solicita una visita domiciliaria el día 20',
-     'La visita de la familia Gómez ya se realizó ayer; llamar en 15 días',
-     'Asigna la visita de Pedro Niño a Carlos y prográmala para el viernes'].forEach(q=>{
-      const d=document.createElement('div');d.className='ex-q';d.textContent=q;
-      d.onclick=()=>{document.getElementById('chatInput').value=q;enviarChat()};cont.appendChild(d);
-    });
-    document.getElementById('chatBody').appendChild(cont);
-  }
-  setTimeout(()=>document.getElementById('chatInput').focus(),100);
-}
-function pushChat(role,text){
-  chatMsgs.push({role,text});
-  const b=document.getElementById('chatBody');
-  const d=document.createElement('div');d.className='msg '+role;d.textContent=text;
-  b.appendChild(d);b.scrollTop=b.scrollHeight;return d;
-}
-async function enviarChat(){
-  const inp=document.getElementById('chatInput');const txt=inp.value.trim();if(!txt)return;
-  inp.value='';pushChat('u',txt);
-  const b=document.getElementById('chatBody');
-  const t=document.createElement('div');t.className='msg a';t.innerHTML='<div class="typing"><span></span><span></span><span></span></div>';
-  b.appendChild(t);b.scrollTop=b.scrollHeight;
-  document.getElementById('chatSend').disabled=true;
-  try{
-    const r=await llamarAsistente(txt);
-    t.remove();
-    aplicarAcciones(r.acciones||[]);
-    pushChat('a',r.respuesta||'Listo.');
-  }catch(e){
-    t.remove();
-    pushChat('sys',state.apiKey?'No se pudo conectar con el Asistente. Revisa tu clave de API en Configuración.':'El Asistente no está disponible aquí. Al publicar la página, agrega tu clave de API en Configuración para activarlo.');
-  }
-  document.getElementById('chatSend').disabled=false;
-}
-function aplicarAcciones(acciones){
-  let cambios=0;
-  acciones.forEach(a=>{
-    if(a.tipo==='crear'&&a.datos){
-      const v=nuevaVisita();Object.assign(v,limpiar(a.datos));
-      if(!v.tipo||!TIPOS[v.tipo])v.tipo='domiciliaria';
-      if(!ESTADOS.includes(v.estado))v.estado='Solicitada';
-      registrarEtapa(v,v.estado,true);
-      v.actualizado=new Date().toISOString();state.visitas.unshift(v);cambios++;
-    }else if(a.tipo==='actualizar'&&a.id){
-      const v=state.visitas.find(x=>x.id===a.id);
-      if(v){const c=limpiar(a.cambios||{});const cambioEstado=c.estado&&c.estado!==v.estado;
-        Object.assign(v,c);if(cambioEstado)registrarEtapa(v,c.estado);
-        v.actualizado=new Date().toISOString();cambios++}
+{
+  "visitas": [
+    {
+      "id": "vkmd8mbnyg29",
+      "solicitante": "Gloria Maria Galvis de Navarro",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Andrea Paola C. y Gustavo Adolfo Triana",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-01-15",
+      "fechaAsignacion": "2026-01-15",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-01-15T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vh9fp5pnyh139",
+      "solicitante": "Siria Inés Gil Martinez",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Angélica Maria y Edgar Giovanni Rubio",
+      "observaciones": "",
+      "estado": "Programada",
+      "fechaSolicitud": "2026-02-01",
+      "fechaAsignacion": "2026-02-01",
+      "fechaProgramada": "2026-02-28",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Programada",
+          "t": "2026-02-01T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vmdqgbjnyh765",
+      "solicitante": "Jorge Luis Trujillo Parra",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Angélica Maria y Edgar Giovanni Rubio",
+      "observaciones": "",
+      "estado": "Programada",
+      "fechaSolicitud": "2026-02-08",
+      "fechaAsignacion": "2026-02-08",
+      "fechaProgramada": "2026-03-14",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Programada",
+          "t": "2026-02-08T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vp9cvmcnyh334",
+      "solicitante": "Gloria Stella Martinez Gomez",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Belén Páez y Ricardo Quevedo",
+      "observaciones": "",
+      "estado": "Programada",
+      "fechaSolicitud": "2026-02-13",
+      "fechaAsignacion": "2026-02-13",
+      "fechaProgramada": "2026-05-09",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Programada",
+          "t": "2026-02-13T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vxu4nlbnyh802",
+      "solicitante": "Helen Garcia Ochoa",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Luisa Fernanda y David Orlando",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-03-19",
+      "fechaAsignacion": "2026-03-19",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-03-19T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vyng6lanyh214",
+      "solicitante": "Sandra Milena Sua Salazar",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Nury Angélica y Carlos Andrés Ramírez",
+      "observaciones": "",
+      "estado": "Programada",
+      "fechaSolicitud": "2026-04-09",
+      "fechaAsignacion": "2026-04-09",
+      "fechaProgramada": "2026-04-18",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Programada",
+          "t": "2026-04-09T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vugk5ownyh726",
+      "solicitante": "Xiomara Cortes Riasco",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Wilson Huarto y Mayra Alejandra Pérez",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-04-14",
+      "fechaAsignacion": "2026-04-15",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-04-15T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vojxcf7nyh900",
+      "solicitante": "Maria del Pilar Moncada Barbosa",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Maria Cristina y Luis Hernando Aldana",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-04-15",
+      "fechaAsignacion": "2026-04-15",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-04-15T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v36uhcjnyh778",
+      "solicitante": "Cristian Alexander Muñoz Imbachi",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Steven Lozano y Andrea Rubiano",
+      "observaciones": "",
+      "estado": "Programada",
+      "fechaSolicitud": "2026-04-21",
+      "fechaAsignacion": "2026-04-21",
+      "fechaProgramada": "2026-06-06",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Programada",
+          "t": "2026-04-21T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vewte85nyh296",
+      "solicitante": "Leonor Patricia Martinez Ruiz",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Stefani Lorena y Mauricio Vela",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-04-21",
+      "fechaAsignacion": "2026-04-22",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-04-22T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v0r24kxnyh217",
+      "solicitante": "Oscar Javier Niño Garcia",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "José Hoover S. y Diana Marlleny Castro",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-04-24",
+      "fechaAsignacion": "2026-04-28",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-04-28T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v52dh76nyh856",
+      "solicitante": "Sergio Camilo Zambrano Toro",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Steven Lozano y Andrea Rubiano",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-04-26",
+      "fechaAsignacion": "2026-04-28",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-04-28T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v7q0rcknyh9",
+      "solicitante": "Maria Josefina Yuluma Villaquira",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Belén Páez y Ricardo Quevedo",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-04-28",
+      "fechaAsignacion": "2026-04-28",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-04-28T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v3q9hw5nyh563",
+      "solicitante": "Martha Isabel Sanchez Pedroza",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "José Hoover S. y Diana Marlleny Castro",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-05-03",
+      "fechaAsignacion": "2026-05-03",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-05-03T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vi9nibhnyh520",
+      "solicitante": "Luz Deyba Molina Niño",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Diana Paola G. y Luz Mery M.",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-05-03",
+      "fechaAsignacion": "2026-05-03",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-05-03T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v6ov4wvnyh791",
+      "solicitante": "Consuelo Perez Hernandez",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Diana Marcela Sanabria y Walter Leandro Marro",
+      "observaciones": "",
+      "estado": "Programada",
+      "fechaSolicitud": "2026-05-07",
+      "fechaAsignacion": "2026-05-07",
+      "fechaProgramada": "2026-06-22",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Programada",
+          "t": "2026-05-07T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vb9kodpnyh361",
+      "solicitante": "Luis Alberto Barbosa",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Diego Fernando Sánchez y Yami Molina",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-05-26",
+      "fechaAsignacion": "2026-05-26",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-05-26T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vrwmputnyh416",
+      "solicitante": "Elizabeth Cuervo Sanabria",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "José Gualberto Martín y Fanny Castellanos",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-07",
+      "fechaAsignacion": "2026-06-07",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-07T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vm3u9canyh808",
+      "solicitante": "Luz Angela Murillo Castaño",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "José Hoover S. y Diana Marlleny Castro",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-10",
+      "fechaAsignacion": "2026-06-10",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-10T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vmer30hnyh935",
+      "solicitante": "Jairo Enrique Torres",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Armando Peña y Pedro Cubides",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-14",
+      "fechaAsignacion": "2026-06-17",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-17T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vsrarvgnyh298",
+      "solicitante": "Johana Piñas Guzman",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Viviana del Pilar y Yesid Alexander Obando",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-14",
+      "fechaAsignacion": "2026-06-17",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-17T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v4tt0zgnyh643",
+      "solicitante": "Ricardo Berruecos Barahona",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Sandra Elizabeth Otero y Mauricio",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-16",
+      "fechaAsignacion": "2026-06-16",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-16T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vpstdbcnyh590",
+      "solicitante": "Ginna Carolina Calvo Gutierrez",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Juan Pablo R. y Ofir Rocío S.",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-16",
+      "fechaAsignacion": "2026-06-17",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-17T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "v9tds88nyh762",
+      "solicitante": "Elkin Ivan Moron Peña",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Juan de Jesús G. y Maria del Carmen Gutiérrez",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-16",
+      "fechaAsignacion": "2026-06-17",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-17T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vr45lq9nyh0",
+      "solicitante": "Yolima Varon Morales",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Jenny Carolina Rodríguez y Óscar Goyeneche",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-17",
+      "fechaAsignacion": "2026-06-17",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-17T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
+    },
+    {
+      "id": "vxxn7cnnyh222",
+      "solicitante": "Stefany Alfonso Cordoba",
+      "cedula": "",
+      "tipo": "domiciliaria",
+      "visitador": "Wilson Huarto y Mayra Alejandra Pérez",
+      "observaciones": "",
+      "estado": "Asignada",
+      "fechaSolicitud": "2026-06-17",
+      "fechaAsignacion": "2026-06-17",
+      "fechaProgramada": "",
+      "fechaRealizacion": "",
+      "seguimientoTipo": "Ninguno",
+      "fechaSeguimiento": "",
+      "seguimientoNota": "",
+      "historial": [
+        {
+          "e": "Asignada",
+          "t": "2026-06-17T00:00:00.000Z"
+        }
+      ],
+      "creado": "2026-06-19T16:26:42.940Z",
+      "actualizado": "2026-06-19T16:26:42.940Z"
     }
-  });
-  if(cambios){guardar();render()}
-}
-const CAMPOS_OK=['solicitante','cedula','tipo','visitador','observaciones','estado','fechaSolicitud','fechaAsignacion','fechaProgramada','fechaRealizacion','seguimientoTipo','fechaSeguimiento','seguimientoNota'];
-function limpiar(o){const r={};for(const k in o)if(CAMPOS_OK.includes(k)&&o[k]!=null&&o[k]!=='')r[k]=o[k];return r}
-
-async function llamarAsistente(userText){
-  const ctx=state.visitas.map(v=>({id:v.id,solicitante:v.solicitante,tipo:v.tipo,estado:v.estado,visitador:v.visitador,fechaProgramada:v.fechaProgramada}));
-  const sys=`Eres el asistente del Ministerio de Visitación de una iglesia. Hoy es ${hoy()}.
-El usuario te habla en español natural para crear o actualizar visitas. Interpreta y devuelve cambios estructurados.
-VISITAS EXISTENTES (usa el "id" exacto para actualizar): ${JSON.stringify(ctx)}
-Estados válidos (en orden): ${ESTADOS.join(', ')}.
-Tipos válidos: domiciliaria, hospitalaria, funeraria.
-Tipos de seguimiento: ${SEG_TIPOS.join(', ')}.
-Devuelve SOLO un objeto JSON válido, sin markdown ni texto extra, con esta forma exacta:
-{"acciones":[ {"tipo":"actualizar","id":"<id_existente>","cambios":{<campos a cambiar>}} , {"tipo":"crear","datos":{<campos>}} ],"respuesta":"<confirmación breve y cálida en español>"}
-Campos posibles: ${CAMPOS_OK.join(', ')}. Las fechas en formato AAAA-MM-DD (interpreta "ayer", "el viernes", "en 15 días", "el día 20" a partir de hoy).
-Para CREAR una visita, el usuario suele dictar: nombre del solicitante, su cédula, el tipo de visita y la fecha en que la solicita o la quiere. Mapea la cédula al campo "cedula", el nombre a "solicitante", y la fecha mencionada a "fechaSolicitud". Si no se menciona estado, déjalo en "Solicitada".
-Ejemplo: "María Restrepo con cédula 52123456 solicita una visita domiciliaria el día 20" → {"tipo":"crear","datos":{"solicitante":"María Restrepo","cedula":"52123456","tipo":"domiciliaria","fechaSolicitud":"<fecha del día 20>"}}.
-Si no identificas a cuál visita se refiere al actualizar, deja "acciones":[] y pídele una aclaración en "respuesta".`;
-  const model=state.model||(state.apiKey?'claude-haiku-4-5-20251001':'claude-sonnet-4-6');
-  const headers={'Content-Type':'application/json'};
-  if(state.apiKey){headers['x-api-key']=state.apiKey;headers['anthropic-version']='2023-06-01';headers['anthropic-dangerous-direct-browser-access']='true'}
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,
-    body:JSON.stringify({model,max_tokens:1000,system:sys,messages:[{role:'user',content:userText}]})});
-  if(!res.ok)throw new Error('http '+res.status);
-  const data=await res.json();
-  const text=(data.content||[]).map(b=>b.text||'').join('');
-  return JSON.parse(text.replace(/```json|```/g,'').trim());
-}
-
-/* ---------- Helpers ---------- */
-function escapeHtml(s){return(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function escapeAttr(s){return escapeHtml(s)}
-let toastT;
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2200)}
-
-/* ---------- Eventos globales ---------- */
-document.getElementById('tabs').onclick=e=>{const t=e.target.closest('.tab');if(t){vista=t.dataset.view;render()}};
-document.getElementById('btnNew').onclick=()=>abrirVisita();
-document.getElementById('btnExport').onclick=exportarExcel;
-document.getElementById('btnSettings').onclick=abrirSettings;
-document.getElementById('fab').onclick=abrirChat;
-document.getElementById('chatClose').onclick=()=>document.getElementById('chatOv').classList.remove('open');
-document.getElementById('chatBg').onclick=()=>document.getElementById('chatOv').classList.remove('open');
-document.getElementById('chatSend').onclick=enviarChat;
-document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviarChat()}});
-document.querySelectorAll('.ov').forEach(o=>o.addEventListener('mousedown',e=>{if(e.target===o)cerrarModales()}));
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){cerrarModales();document.getElementById('chatOv').classList.remove('open')}});
-
-/* ---------- Login e inicio ---------- */
-function mostrarLogin(){document.getElementById('loginOv').classList.add('show')}
-function ocultarLogin(){document.getElementById('loginOv').classList.remove('show')}
-async function entrarApp(){ocultarLogin();await cargarRemoto();render();setNube(true)}
-async function hacerLogin(){
-  let email=document.getElementById('lg_email').value.trim();
-  const pass=document.getElementById('lg_pass').value;
-  const err=document.getElementById('lg_error');const btn=document.getElementById('lg_btn');
-  err.classList.remove('show');
-  if(!email||!pass){err.textContent='Escribe tu cédula y contraseña.';err.classList.add('show');return}
-  if(!email.includes('@'))email=email+'@visitacion.com';
-  btn.disabled=true;btn.textContent='Entrando…';
-  try{
-    const{error}=await sb.auth.signInWithPassword({email,password:pass});
-    if(error)throw error;
-    await entrarApp();
-  }catch(e){
-    err.textContent='Cédula o contraseña incorrectas.';err.classList.add('show');
-  }
-  btn.disabled=false;btn.textContent='Entrar';
-}
-async function cerrarSesion(){if(sb){await sb.auth.signOut();}location.reload();}
-async function initApp(){
-  if(sb){
-    const hint=document.getElementById('lg_hint');
-    try{
-      const{data:{session}}=await sb.auth.getSession();
-      if(session){await entrarApp();}
-      else{mostrarLogin();if(hint)hint.textContent='Ingresa con tu cédula en ambos campos.';}
-    }catch(e){
-      mostrarLogin();if(hint)hint.textContent='No se pudo conectar con el servidor. Revisa tu internet.';
+  ],
+  "visitadores": [
+    {
+      "id": "p5gcs7cnyh256",
+      "nombre": "Andrea Paola C. y Gustavo Adolfo Triana",
+      "telefono": "3172602094",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pdhzimhnyh872",
+      "nombre": "Angélica Maria y Edgar Giovanni Rubio",
+      "telefono": "3102092346",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "p55kf6dnyh521",
+      "nombre": "Belén Páez y Ricardo Quevedo",
+      "telefono": "3186600734",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pk7pdxznyh255",
+      "nombre": "Luisa Fernanda y David Orlando",
+      "telefono": "3006249059",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "p0t8owgnyh199",
+      "nombre": "Nury Angélica y Carlos Andrés Ramírez",
+      "telefono": "3167339175",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pn8iav3nyh896",
+      "nombre": "Wilson Huarto y Mayra Alejandra Pérez",
+      "telefono": "3024163138",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "ppd2wpznyh654",
+      "nombre": "Maria Cristina y Luis Hernando Aldana",
+      "telefono": "3105513826",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "purrv0snyh992",
+      "nombre": "Steven Lozano y Andrea Rubiano",
+      "telefono": "3185164155",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "p984l5rnyh834",
+      "nombre": "Stefani Lorena y Mauricio Vela",
+      "telefono": "3043724286",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pi4kt3wnyh237",
+      "nombre": "José Hoover S. y Diana Marlleny Castro",
+      "telefono": "3138293744",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "p2mcinanyh449",
+      "nombre": "Diana Paola G. y Luz Mery M.",
+      "telefono": "3202316924",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pexaakonyh130",
+      "nombre": "Diana Marcela Sanabria y Walter Leandro Marro",
+      "telefono": "3202399510",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pbk053rnyh503",
+      "nombre": "Diego Fernando Sánchez y Yami Molina",
+      "telefono": "3176753579",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pwb5e1vnyh250",
+      "nombre": "José Gualberto Martín y Fanny Castellanos",
+      "telefono": "3192982062",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "ph33uhonyh246",
+      "nombre": "Armando Peña y Pedro Cubides",
+      "telefono": "3219062092",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "ppr4el8nyh215",
+      "nombre": "Viviana del Pilar y Yesid Alexander Obando",
+      "telefono": "3504634195",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pl9v8ibnyh808",
+      "nombre": "Sandra Elizabeth Otero y Mauricio",
+      "telefono": "3112832639",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "p3kduiinyh368",
+      "nombre": "Juan Pablo R. y Ofir Rocío S.",
+      "telefono": "3143591513",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pbn4fv0nyh558",
+      "nombre": "Juan de Jesús G. y Maria del Carmen Gutiérrez",
+      "telefono": "3012119466",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
+    },
+    {
+      "id": "pcgf9s0nyh505",
+      "nombre": "Jenny Carolina Rodríguez y Óscar Goyeneche",
+      "telefono": "3203145805",
+      "zona": "",
+      "tipos": [
+        "domiciliaria"
+      ],
+      "activo": true
     }
-    document.getElementById('lg_btn').onclick=hacerLogin;
-    document.getElementById('lg_pass').addEventListener('keydown',e=>{if(e.key==='Enter')hacerLogin()});
-  }else{
-    // Modo local (sin servidor): vista previa u offline
-    cargarLocal();render();
-  }
+  ]
 }
-initApp();
-</script>
-</body>
-</html>
