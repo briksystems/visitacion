@@ -121,6 +121,11 @@
   .tiempos .ti-n{font-family:"Spectral",serif;font-size:22px;font-weight:600;color:var(--primary);line-height:1}
   .tiempos .ti-l{font-size:11.5px;color:var(--muted)}
   .rec-btns{display:flex;gap:8px;margin-top:8px}
+  .pill.noti{background:var(--ok-soft);color:var(--ok)}
+  .pill.nonoti{background:var(--accent-soft);color:var(--accent)}
+  .notif-si{margin-top:10px;font-size:12.5px;color:var(--ok);font-weight:600;background:var(--ok-soft);border-radius:8px;padding:8px 11px}
+  .notif-no{margin-top:10px;font-size:12.5px;color:var(--accent);background:var(--accent-soft);border-radius:8px;padding:8px 11px}
+  .notif-mini{margin-top:5px;font-size:11.5px;color:var(--muted)}
   .col-empty{font-size:12px;color:#9aa7a1;text-align:center;padding:14px 6px;border:1px dashed var(--line);border-radius:10px}
 
   /* LISTS (seguimiento / visitadores) */
@@ -449,10 +454,13 @@ function cardHTML(v){
   const late=esAtrasada(v),due=segVencido(v);
   const cls=tipoClass(v.tipo);
   const dias=v.estado!=='Cerrada'?diasEnEtapa(v):null;
+  const notif=(v.notificaciones||[]);
+  const activa=EST_ACTIVAS.includes(v.estado);
   return `<div class="card t-${cls} ${late?'late':''}" data-id="${v.id}">
     <div class="ct">${escapeHtml(v.solicitante||'(sin nombre)')}${v.cedula?`<span class="cc">CC ${escapeHtml(v.cedula)}</span>`:''}</div>
     <div class="meta">
       <span class="pill ${cls}">${TIPOS[v.tipo]}</span>
+      ${notif.length?`<span class="pill noti">✓ Notif. ${fmtFecha(notif[notif.length-1])}</span>`:(activa?'<span class="pill nonoti">Sin notificar</span>':'')}
       ${late?'<span class="pill warn">Sin avanzar</span>':''}
       ${due?'<span class="pill due">Seguimiento vencido</span>':''}
     </div>
@@ -626,7 +634,8 @@ function abrirVisita(id){
           <button class="btn btn-quiet" id="btnCopiarRec" style="flex:1;justify-content:center">Copiar mensaje</button>
           ${recTel(v)?`<button class="btn btn-quiet" id="btnWA" style="flex:1;justify-content:center">Abrir WhatsApp</button>`:''}
         </div>
-        <div class="hint">Pégalo en el chat del visitador. El mensaje se arma solo con los datos de esta visita.</div></div>`}
+        <button class="btn btn-primary" id="btnNotif" style="justify-content:center;width:100%;margin-top:8px">Marcar como enviado</button>
+        <div id="notifLog">${notifHTML(v)}</div></div>`}
     </div>
     <div class="modal-f">
       ${esNueva?'':'<button class="danger-link" id="delVisita">Eliminar visita</button>'}
@@ -651,6 +660,15 @@ function abrirVisita(id){
     const bw=document.getElementById('btnWA');
     if(bw)bw.onclick=()=>{let n=recTel(v);if(n&&!n.startsWith('57'))n='57'+n;
       window.open('https://wa.me/'+n+'?text='+encodeURIComponent(generarRecordatorio(v)),'_blank')};
+    const bn=document.getElementById('btnNotif');
+    if(bn)bn.onclick=()=>{
+      if(!Array.isArray(v.notificaciones))v.notificaciones=[];
+      v.notificaciones.push(new Date().toISOString());
+      v.actualizado=new Date().toISOString();
+      guardar();render();
+      document.getElementById('notifLog').innerHTML=notifHTML(v);
+      toast('Notificación registrada');
+    };
   }
   const get=id=>{const el=document.getElementById(id);return el?el.value.trim():''};
   document.getElementById('saveVisita').onclick=()=>{
@@ -674,7 +692,7 @@ function abrirVisita(id){
 }
 function nuevaVisita(){return{id:uid('v'),solicitante:'',cedula:'',tipo:'domiciliaria',visitador:'',observaciones:'',
   estado:'Solicitada',fechaSolicitud:hoy(),fechaAsignacion:'',fechaProgramada:'',fechaRealizacion:'',
-  seguimientoTipo:'Ninguno',fechaSeguimiento:'',seguimientoNota:'',historial:[],
+  seguimientoTipo:'Ninguno',fechaSeguimiento:'',seguimientoNota:'',historial:[],notificaciones:[],
   creado:new Date().toISOString(),actualizado:new Date().toISOString()}}
 
 /* ---------- Tiempos y etapas ---------- */
@@ -696,6 +714,15 @@ function tiempoCiclo(v){
   return null;
 }
 function recTel(v){const x=state.visitadores.find(p=>p.nombre===v.visitador);return x&&x.telefono?x.telefono.replace(/\D/g,''):''}
+function fmtFechaHora(iso){if(!iso)return'';const d=new Date(iso);const p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`}
+function notifHTML(v){
+  const n=v.notificaciones||[];
+  if(!n.length)return '<div class="notif-no">Aún no se ha marcado como enviado.</div>';
+  const ult=n[n.length-1];
+  let extra='';
+  if(n.length>1)extra=`<div class="notif-mini">Anteriores: ${n.slice(0,-1).map(fmtFechaHora).join(' · ')}</div>`;
+  return `<div class="notif-si">✓ Notificado ${n.length} ${n.length===1?'vez':'veces'}. Última: ${fmtFechaHora(ult)}</div>${extra}`;
+}
 function generarRecordatorio(v){
   const dias=v.fechaAsignacion?diasDesde(v.fechaAsignacion):null;
   const nombres=v.visitador?v.visitador:'estimados visitadores';
