@@ -837,7 +837,12 @@ function abrirSettings(){
   document.getElementById('s_import').onclick=()=>document.getElementById('s_file').click();
   document.getElementById('s_file').onchange=e=>{
     const f=e.target.files[0];if(!f)return;const r=new FileReader();
-    r.onload=()=>{try{const d=JSON.parse(r.result);state=Object.assign(state,d);guardar();cerrarModales();render();toast('Datos importados')}catch(err){toast('Archivo no válido')}};
+    r.onload=()=>{try{
+      const d=JSON.parse(r.result);
+      const res=fusionarImportacion(d);
+      guardar();cerrarModales();render();
+      toast(`Importadas ${res.nuevas} nuevas · ${res.repetidas} ya existían`);
+    }catch(err){toast('Archivo no válido')}};
     r.readAsText(f);
   };
   document.getElementById('s_reset').onclick=()=>{if(confirm('Esto borrará todas las visitas y visitadores. ¿Continuar?')){
@@ -849,6 +854,26 @@ function abrirSettings(){
 }
 
 function cerrarModales(){document.querySelectorAll('.ov').forEach(o=>o.classList.remove('open'))}
+
+/* Importación acumulativa: agrega visitas nuevas, conserva las existentes, suma visitadores nuevos */
+function fusionarImportacion(d){
+  if(!Array.isArray(state.visitas))state.visitas=[];
+  if(!Array.isArray(state.visitadores))state.visitadores=[];
+  const clave=v=>((v.solicitante||'').trim().toLowerCase()+'|'+(v.fechaSolicitud||''));
+  const existentes=new Set(state.visitas.map(clave));
+  let nuevas=0,repetidas=0;
+  (d.visitas||[]).forEach(v=>{
+    if(existentes.has(clave(v))){repetidas++;}
+    else{state.visitas.unshift(v);existentes.add(clave(v));nuevas++;}
+  });
+  // visitadores: agrega los que no existan por nombre
+  const nombres=new Set(state.visitadores.map(x=>(x.nombre||'').trim().toLowerCase()));
+  (d.visitadores||[]).forEach(x=>{
+    const k=(x.nombre||'').trim().toLowerCase();
+    if(k&&!nombres.has(k)){state.visitadores.push(x);nombres.add(k);}
+  });
+  return{nuevas,repetidas};
+}
 
 /* ---------- EXPORTAR A EXCEL ---------- */
 function exportarExcel(){
