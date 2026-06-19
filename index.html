@@ -698,18 +698,23 @@ function tiempoCiclo(v){
 function recTel(v){const x=state.visitadores.find(p=>p.nombre===v.visitador);return x&&x.telefono?x.telefono.replace(/\D/g,''):''}
 function generarRecordatorio(v){
   const dias=v.fechaAsignacion?diasDesde(v.fechaAsignacion):null;
+  const nombres=v.visitador?v.visitador:'estimados visitadores';
   const L=[];
-  L.push(`Hola${v.visitador?' '+v.visitador:''}, un recordatorio de esta visitación:`);
+  L.push(`Apreciados ${nombres},`);
   L.push('');
-  L.push(`Solicitante: ${v.solicitante||'(sin nombre)'}`);
-  L.push(`Tipo: ${TIPOS[v.tipo]}`);
-  if(v.fechaAsignacion)L.push(`Se asignó el ${fmtFecha(v.fechaAsignacion)}.`);
-  if(v.estado==='Programada'&&v.fechaProgramada)L.push(`Quedó programada para el ${fmtFecha(v.fechaProgramada)}.`);
-  if(v.fechaRealizacion)L.push(`Se realizó el ${fmtFecha(v.fechaRealizacion)}.`);
-  else if(dias!=null)L.push(`Lleva ${dias} día${dias===1?'':'s'} desde que se asignó.`);
-  if(v.seguimientoTipo&&v.seguimientoTipo!=='Ninguno')L.push(`Acción siguiente: ${v.seguimientoTipo}${v.fechaSeguimiento?' ('+fmtFecha(v.fechaSeguimiento)+')':''}.`);
+  L.push('Reciban un cordial saludo de parte del Ministerio de Visitación. Nos permitimos hacerles un recordatorio de la siguiente visitación que les fue asignada:');
   L.push('');
-  L.push('Quedo atento. ¡Gracias por tu servicio!');
+  L.push(`• Solicitante: ${v.solicitante||'(sin nombre)'}`);
+  L.push(`• Tipo de visita: ${TIPOS[v.tipo]}`);
+  if(v.fechaAsignacion)L.push(`• Fecha de asignación: ${fmtFecha(v.fechaAsignacion)}`);
+  if(v.estado==='Programada'&&v.fechaProgramada)L.push(`• Programada para: ${fmtFecha(v.fechaProgramada)}`);
+  if(v.fechaRealizacion)L.push(`• Realizada el: ${fmtFecha(v.fechaRealizacion)}`);
+  else if(dias!=null)L.push(`• Lleva ${dias} día${dias===1?'':'s'} desde su asignación.`);
+  if(v.seguimientoTipo&&v.seguimientoTipo!=='Ninguno')L.push(`• Acción siguiente: ${v.seguimientoTipo}${v.fechaSeguimiento?' ('+fmtFecha(v.fechaSeguimiento)+')':''}`);
+  L.push('');
+  L.push('Nos gustaría saber si han tenido algún avance o antecedente con esta visita, o si hay algo en lo que podamos colaborarles para poder llevarla a cabo.');
+  L.push('');
+  L.push('Agradecemos de todo corazón su servicio y entrega al Señor. Que Dios les bendiga grandemente.');
   return L.join('\n');
 }
 function copiar(txt){
