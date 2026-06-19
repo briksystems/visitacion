@@ -83,13 +83,20 @@
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:0 var(--radius) var(--radius) var(--radius);box-shadow:var(--shadow)}
 
   /* BOARD */
-  .board{display:flex;gap:14px;padding:16px;overflow-x:auto;scroll-snap-type:x proximity}
-  .col{min-width:240px;width:240px;flex:none;scroll-snap-align:start;display:flex;flex-direction:column}
-  .col-h{display:flex;align-items:center;gap:8px;padding:0 4px 10px}
-  .col-h .dot{width:9px;height:9px;border-radius:50%}
-  .col-h .t{font-weight:700;font-size:13.5px}
-  .col-h .c{margin-left:auto;font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:20px;padding:1px 8px}
-  .col-body{display:flex;flex-direction:column;gap:9px;min-height:40px}
+  .acc{padding:12px}
+  .acc-sec{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;background:var(--surface)}
+  .acc-head{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;user-select:none}
+  .acc-head:hover{background:var(--surface-2)}
+  .acc-head .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .acc-head .t{font-weight:700;font-size:14.5px}
+  .acc-head .c{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:20px;padding:1px 9px}
+  .acc-head .chev{margin-left:auto;width:18px;height:18px;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;flex:none}
+  .acc-sec.open .acc-head{background:var(--surface-2);border-bottom:1px solid var(--line)}
+  .acc-sec.open .acc-head .chev{transform:rotate(180deg)}
+  .acc-body{display:none;padding:12px;gap:10px;flex-wrap:wrap}
+  .acc-sec.open .acc-body{display:flex}
+  .acc-body .card{flex:1 1 240px;min-width:0;max-width:340px}
+  .acc-body .col-empty{flex:1 1 100%}
   .card{
     background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:11px 12px;
     cursor:pointer;transition:.12s;border-left:3px solid var(--primary)
@@ -113,6 +120,7 @@
   .tiempos .ti{flex:1;display:flex;flex-direction:column;gap:2px}
   .tiempos .ti-n{font-family:"Spectral",serif;font-size:22px;font-weight:600;color:var(--primary);line-height:1}
   .tiempos .ti-l{font-size:11.5px;color:var(--muted)}
+  .rec-btns{display:flex;gap:8px;margin-top:8px}
   .col-empty{font-size:12px;color:#9aa7a1;text-align:center;padding:14px 6px;border:1px dashed var(--line);border-radius:10px}
 
   /* LISTS (seguimiento / visitadores) */
@@ -342,8 +350,8 @@ const Store=(()=>{let mem={},backend='memoria';try{localStorage.setItem('__t','1
  set(k,v){if(backend==='local'){try{localStorage.setItem(k,v);return}catch(e){}}mem[k]=v}}})();
 
 /* ---------- Estado ---------- */
-const ESTADOS=['Solicitada','Asignada','Confirmada','Programada','Realizada','Evaluada','Cerrada'];
-const COLORES_EST=['#9aa7a1','#C9872F','#2C6E8F','#7a6cae','#4E8068','#2f7d6e','#14564E'];
+const ESTADOS=['Solicitada','Asignada','Programada','Realizada','Evaluada','Cerrada'];
+const COLORES_EST=['#9aa7a1','#C9872F','#7a6cae','#4E8068','#2f7d6e','#14564E'];
 const TIPOS={domiciliaria:'Domiciliaria',hospitalaria:'Hospitalaria',funeraria:'Funeraria'};
 const ORIGENES=['Iglesia','Puesto de visitación','Call center','Consejería','Página web','Otro'];
 const SEG_TIPOS=['Ninguno','Nueva visita','Llamada de seguimiento','Consejería','Atención a otra persona'];
@@ -411,19 +419,30 @@ function renderTabs(){
 
 /* ---------- TABLERO ---------- */
 function tipoClass(t){return t==='domiciliaria'?'dom':t==='hospitalaria'?'hos':'fun'}
+let tableroAbiertos=null;
 function renderTablero(){
   const p=document.getElementById('panel');
   if(!state.visitas.length){p.className='panel';p.innerHTML=emptyState('clipboard','Aún no hay visitas registradas','Usa “Nueva visita” o háblale al Asistente para cargar la primera.');return}
-  let cols='';
+  if(tableroAbiertos===null)tableroAbiertos=new Set(['Asignada','Programada']);
+  let secs='';
   ESTADOS.forEach((est,i)=>{
     const items=state.visitas.filter(v=>v.estado===est);
-    let body=items.length?items.map(cardHTML).join(''):'<div class="col-empty">Sin visitas</div>';
-    cols+=`<div class="col">
-      <div class="col-h"><span class="dot" style="background:${COLORES_EST[i]}"></span>
-        <span class="t">${est}</span><span class="c">${items.length}</span></div>
-      <div class="col-body">${body}</div></div>`;
+    const open=tableroAbiertos.has(est);
+    const body=items.length?items.map(cardHTML).join(''):'<div class="col-empty">Sin visitas</div>';
+    secs+=`<div class="acc-sec ${open?'open':''}">
+      <div class="acc-head" data-toggle="${est}">
+        <span class="dot" style="background:${COLORES_EST[i]}"></span>
+        <span class="t">${est}</span><span class="c">${items.length}</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="acc-body">${body}</div></div>`;
   });
-  p.className='panel';p.innerHTML=`<div class="board">${cols}</div>`;
+  p.className='panel';p.innerHTML=`<div class="acc">${secs}</div>`;
+  p.querySelectorAll('.acc-head').forEach(h=>h.onclick=()=>{
+    const est=h.dataset.toggle;
+    if(tableroAbiertos.has(est))tableroAbiertos.delete(est);else tableroAbiertos.add(est);
+    renderTablero();
+  });
   p.querySelectorAll('.card').forEach(c=>c.onclick=()=>abrirVisita(c.dataset.id));
 }
 function cardHTML(v){
@@ -468,7 +487,7 @@ function renderSeguimiento(){
 
 /* ---------- VISITADORES (tablero de carga) ---------- */
 const PERIODOS={mes:'Este mes','3m':'Últimos 3 meses',anio:'Este año',todo:'Histórico'};
-const EST_ACTIVAS=['Asignada','Confirmada','Programada'];
+const EST_ACTIVAS=['Asignada','Programada'];
 const EST_HECHAS=['Realizada','Evaluada','Cerrada'];
 function fechaRef(v){return(v.fechaRealizacion||v.actualizado||'').slice(0,10)}
 function enPeriodo(fecha,per){
@@ -600,6 +619,14 @@ function abrirVisita(id){
         <div class="fld"><label>Fecha del próximo seguimiento</label><input type="date" id="f_fechaSeguimiento" value="${v.fechaSeguimiento||''}"></div>
         <div class="fld"><label>Nota de la acción pendiente</label><input id="f_seguimientoNota" value="${escapeAttr(v.seguimientoNota)}" placeholder="Ej. Llamada de control"></div>
       </div>
+      ${esNueva?'':`<div class="fld" style="border-top:1px solid var(--line);padding-top:14px">
+        <label>Recordatorio para el visitador</label>
+        <textarea id="f_recordatorio" readonly style="min-height:130px;background:var(--surface-2)">${escapeHtml(generarRecordatorio(v))}</textarea>
+        <div class="rec-btns">
+          <button class="btn btn-quiet" id="btnCopiarRec" style="flex:1;justify-content:center">Copiar mensaje</button>
+          ${recTel(v)?`<button class="btn btn-quiet" id="btnWA" style="flex:1;justify-content:center">Abrir WhatsApp</button>`:''}
+        </div>
+        <div class="hint">Pégalo en el chat del visitador. El mensaje se arma solo con los datos de esta visita.</div></div>`}
     </div>
     <div class="modal-f">
       ${esNueva?'':'<button class="danger-link" id="delVisita">Eliminar visita</button>'}
@@ -619,6 +646,11 @@ function abrirVisita(id){
     const enEtapa=diasEnEtapa(v),ciclo=tiempoCiclo(v);
     te.innerHTML=`<div class="ti"><span class="ti-n">${enEtapa}</span><span class="ti-l">días en “${v.estado}”</span></div>
       <div class="ti"><span class="ti-n">${ciclo!=null?ciclo:'—'}</span><span class="ti-l">días de solicitud a realización</span></div>`;
+    const bc=document.getElementById('btnCopiarRec');
+    if(bc)bc.onclick=()=>copiar(generarRecordatorio(v));
+    const bw=document.getElementById('btnWA');
+    if(bw)bw.onclick=()=>{let n=recTel(v);if(n&&!n.startsWith('57'))n='57'+n;
+      window.open('https://wa.me/'+n+'?text='+encodeURIComponent(generarRecordatorio(v)),'_blank')};
   }
   const get=id=>{const el=document.getElementById(id);return el?el.value.trim():''};
   document.getElementById('saveVisita').onclick=()=>{
@@ -662,6 +694,34 @@ function diasEnEtapa(v){
 function tiempoCiclo(v){
   if(v.fechaRealizacion&&v.fechaSolicitud)return diasEntre(v.fechaSolicitud,v.fechaRealizacion);
   return null;
+}
+function recTel(v){const x=state.visitadores.find(p=>p.nombre===v.visitador);return x&&x.telefono?x.telefono.replace(/\D/g,''):''}
+function generarRecordatorio(v){
+  const dias=v.fechaAsignacion?diasDesde(v.fechaAsignacion):null;
+  const L=[];
+  L.push(`Hola${v.visitador?' '+v.visitador:''}, un recordatorio de esta visitación:`);
+  L.push('');
+  L.push(`Solicitante: ${v.solicitante||'(sin nombre)'}`);
+  L.push(`Tipo: ${TIPOS[v.tipo]}`);
+  if(v.fechaAsignacion)L.push(`Se asignó el ${fmtFecha(v.fechaAsignacion)}.`);
+  if(v.estado==='Programada'&&v.fechaProgramada)L.push(`Quedó programada para el ${fmtFecha(v.fechaProgramada)}.`);
+  if(v.fechaRealizacion)L.push(`Se realizó el ${fmtFecha(v.fechaRealizacion)}.`);
+  else if(dias!=null)L.push(`Lleva ${dias} día${dias===1?'':'s'} desde que se asignó.`);
+  if(v.seguimientoTipo&&v.seguimientoTipo!=='Ninguno')L.push(`Acción siguiente: ${v.seguimientoTipo}${v.fechaSeguimiento?' ('+fmtFecha(v.fechaSeguimiento)+')':''}.`);
+  L.push('');
+  L.push('Quedo atento. ¡Gracias por tu servicio!');
+  return L.join('\n');
+}
+function copiar(txt){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast('Mensaje copiado')).catch(()=>copiaFallback(txt));
+  }else copiaFallback(txt);
+}
+function copiaFallback(txt){
+  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');toast('Mensaje copiado')}catch(e){toast('No se pudo copiar')}
+  ta.remove();
 }
 
 /* ---------- MODAL VISITADOR ---------- */
